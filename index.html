@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruangan dengan Cahaya</title>
+    <style> body { margin: 0; } </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // Scene
+        const scene = new THREE.Scene();
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 7);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Ruangan (kubus besar tanpa bagian atas)
+        const roomSize = 6;
+        const roomGeometry = new THREE.BoxGeometry(roomSize, roomSize, roomSize);
+        const roomMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, side: THREE.BackSide });
+        const room = new THREE.Mesh(roomGeometry, roomMaterial);
+        scene.add(room);
+
+        // Lantai
+        // Lantai (Fixed Flickering)
+        const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
+        const floorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x444444, 
+            polygonOffset: true,  // Mencegah flickering
+            polygonOffsetFactor: 1 
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -roomSize / 2 + 0.01;  // Geser sedikit ke atas
+        scene.add(floor);
+
+
+        // 🌟 Cahaya dalam Ruangan 🌟
+        // Ambient Light (Cahaya menyebar)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        // SpotLight (Lampu sorot dari atas)
+        const spotLight = new THREE.SpotLight(0xffffff, 0.8);
+        spotLight.position.set(3, 4, 3);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.3;
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        // Point Light (Lampu kecil di tengah ruangan)
+        const pointLight = new THREE.PointLight(0xffaa00, 1.2, 5);
+        pointLight.position.set(0, 1.5, 0);
+        scene.add(pointLight);
+
+        // Directional Light (Cahaya seperti matahari dari satu sisi)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 2, -1);
+        scene.add(directionalLight);
+
+        // Material warna-warni
+        const materials = [
+            new THREE.MeshStandardMaterial({ color: 0xff5733 }), // Merah
+            new THREE.MeshStandardMaterial({ color: 0x33ff57 }), // Hijau
+            new THREE.MeshStandardMaterial({ color: 0x3357ff }), // Biru
+            new THREE.MeshStandardMaterial({ color: 0xffff33 }), // Kuning
+            new THREE.MeshStandardMaterial({ color: 0xff33ff })  // Ungu
+        ];
+
+        // 1. Bola
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 32), materials[0]);
+        sphere.position.set(-2, -2 + 0.6, 0);
+        scene.add(sphere);
+
+        // 2. Torus
+        const torus = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.2, 16, 100), materials[1]);
+        torus.position.set(2, -2 + 0.6, 0);
+        scene.add(torus);
+
+        // 3. Kerucut
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 32), materials[2]);
+        cone.position.set(0, -2 + 0.6, -2);
+        scene.add(cone);
+
+        // 4. Silinder
+        const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 32), materials[3]);
+        cylinder.position.set(-1.5, -2 + 0.6, 2);
+        scene.add(cylinder);
+
+        // 5. Dodecahedron
+        const dodecahedron = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7), materials[4]);
+        dodecahedron.position.set(1.5, -2 + 0.7, 2);
+        scene.add(dodecahedron);
+        const loader = new GLTFLoader();
+
+
+        let monitor;
+        loader.load('./c64_monitor.glb', function(gltf){
+             monitor = gltf.scene;
+            monitor.scale.set(0.03,0.03,0.03);
+            monitor.position.set(0,-1.8,0);
+            scene.add(gltf.scene);
+        });
+
+        // Orbit Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Animasi
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Animasi objek berputar
+            sphere.rotation.y += 0.01;
+            torus.rotation.x += 0.02;
+            cone.rotation.y += 0.015;
+            cylinder.rotation.z += 0.02;
+            dodecahedron.rotation.x += 0.01;
+            dodecahedron.rotation.y += 0.01;
+            // monitor.rotation.x+=1;
+            // monitor.rotation.z+=1;
+            // monitor.rotation.y+=1;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize Window Handling
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
