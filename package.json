@@ -1,0 +1,26 @@
+{
+  "name": "proyek",
+  "version": "1.0.0",
+  "description": "\"# proyekgrafkom\"",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jecongg/proyekgrafkom.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jecongg/proyekgrafkom/issues"
+  },
+  "homepage": "https://github.com/jecongg/proyekgrafkom#readme",
+  "dependencies": {
+    "three": "^0.176.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
