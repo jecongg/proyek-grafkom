@@ -15,7 +15,14 @@
             import * as THREE from "three";
             import { OrbitControls } from "three/addons/controls/OrbitControls.js";
             import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-            let yCamera = 2;
+            import {
+                sphere,
+                torus,
+                cone,
+                cylinder,
+                dodecahedron,
+            } from "/obj.js";
+            let yCamera = 0;
 
             // Scene
             const scene = new THREE.Scene();
@@ -37,19 +44,19 @@
             document.body.appendChild(renderer.domElement);
 
             // Ruangan (kubus besar tanpa bagian atas)
-            const roomSize = 2;
-            const roomGeometry = new THREE.BoxGeometry(
-                roomSize,
-                roomSize,
-                roomSize
-            );
-            const roomMaterial = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                side: THREE.BackSide,
-            });
-            const room = new THREE.Mesh(roomGeometry, roomMaterial);
-            room.position.set(10, 0, 0);
-            scene.add(room);
+            // const roomSize = 2;
+            // const roomGeometry = new THREE.BoxGeometry(
+            //     roomSize,
+            //     roomSize,
+            //     roomSize
+            // );
+            // const roomMaterial = new THREE.MeshStandardMaterial({
+            //     color: 0xffffff,
+            //     side: THREE.BackSide,
+            // });
+            // const room = new THREE.Mesh(roomGeometry, roomMaterial);
+            // room.position.set(10, 0, 0);
+            // scene.add(room);
 
             // 🌟 Cahaya dalam Ruangan 🌟
             // Ambient Light (Cahaya menyebar)
@@ -75,61 +82,20 @@
             scene.add(directionalLight);
 
             // Material warna-warni
-            const materials = [
-                new THREE.MeshStandardMaterial({ color: 0xff5733 }), // Merah
-                new THREE.MeshStandardMaterial({ color: 0x33ff57 }), // Hijau
-                new THREE.MeshStandardMaterial({ color: 0x3357ff }), // Biru
-                new THREE.MeshStandardMaterial({ color: 0xffff33 }), // Kuning
-                new THREE.MeshStandardMaterial({ color: 0xff33ff }), // Ungu
-            ];
-
-            // 1. Bola
-            const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(0.6, 32, 32),
-                materials[0]
-            );
-            sphere.position.set(-2, -2 + 0.6, 0);
             scene.add(sphere);
-
-            // 2. Torus
-            const torus = new THREE.Mesh(
-                new THREE.TorusGeometry(0.6, 0.2, 16, 100),
-                materials[1]
-            );
-            torus.position.set(2, -2 + 0.6, 0);
             scene.add(torus);
-
-            // 3. Kerucut
-            const cone = new THREE.Mesh(
-                new THREE.ConeGeometry(0.6, 1.2, 32),
-                materials[2]
-            );
-            cone.position.set(0, -2 + 0.6, -2);
             scene.add(cone);
-
-            // 4. Silinder
-            const cylinder = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.5, 0.5, 1.2, 32),
-                materials[3]
-            );
-            cylinder.position.set(-1.5, -2 + 0.6, 2);
             scene.add(cylinder);
-
-            // 5. Dodecahedron
-            const dodecahedron = new THREE.Mesh(
-                new THREE.DodecahedronGeometry(0.7),
-                materials[4]
-            );
-            dodecahedron.position.set(1.5, -2 + 0.7, 2);
             scene.add(dodecahedron);
             const loader = new GLTFLoader();
 
             let basement;
             loader.load(
-                "./assets/models/room/rock_wall_basement_with_baked_lighting.glb",
+                "/assets/models/coba/empty_old_garage_room.glb",
+                // "./assets/models/room/rock_wall_basement_with_baked_lighting.glb",
                 function (gltf) {
                     basement = gltf.scene;
-                    basement.scale.set(1, 1, 1);
+                    basement.scale.set(0.5, 0.5, 0.5);
                     basement.position.set(0, 0, 0);
                     scene.add(gltf.scene);
                 }
