@@ -4,6 +4,14 @@ import { roomBox, collidableBoxes } from "./loader.js";
 import { scene } from "./sceneSetup.js";
 
 let controls;
+let isRunning = false;
+let headBobTimer = 0;
+let stamina = 100;
+const maxStamina = 100;
+let sound;
+let walkSound;
+const sprintDrain = 20; // stamina/saat lari
+const staminaRegen = 10; // stamina/regen per detik
 let moveForward = false,
     moveBackward = false,
     moveLeft = false,
@@ -11,12 +19,42 @@ let moveForward = false,
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 let previousPosition = new THREE.Vector3();
+let velocityY = 0; // kecepatan vertikal
+const gravity = -0.3; // gravitasi ke bawah
+const jumpStrength = 0.1; // seberapa tinggi lompat
+let isOnGround = true; // apakah sedang di tanah
+const downRay = new THREE.Raycaster();
+const downDirection = new THREE.Vector3(0, -1, 0);
+
+let sceneRef = null;
+
+export function setScene(scene) {
+    sceneRef = scene;
+}
 
 export function setupControls(camera, renderer) {
     controls = new PointerLockControls(camera, renderer.domElement);
 
     document.body.addEventListener("click", () => {
         controls.lock();
+    });
+
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
+
+    sound = new THREE.Audio(listener);
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load("/assets/sounds/sprint.mp3", function (buffer) {
+        sound.setBuffer(buffer);
+        sound.setLoop(true);
+        sound.setVolume(0.5);
+    });
+
+    walkSound = new THREE.Audio(listener);
+    audioLoader.load("/assets/sounds/walk.mp3", (buffer) => {
+        walkSound.setBuffer(buffer);
+        walkSound.setLoop(true);
+        walkSound.setVolume(0.4); // lebih pelan dari sprint
     });
 
     document.addEventListener("keydown", (event) => {
@@ -32,6 +70,16 @@ export function setupControls(camera, renderer) {
                 break;
             case "KeyD":
                 moveRight = true;
+                break;
+            case "ShiftLeft":
+            case "ShiftRight":
+                isRunning = true;
+                break;
+            case "Space":
+                if (isOnGround) {
+                    velocityY = jumpStrength;
+                    isOnGround = false;
+                }
                 break;
         }
     });
@@ -50,6 +98,10 @@ export function setupControls(camera, renderer) {
             case "KeyD":
                 moveRight = false;
                 break;
+            case "ShiftLeft":
+            case "ShiftRight":
+                isRunning = false;
+                break;
         }
     });
 }
@@ -57,7 +109,11 @@ export function setupControls(camera, renderer) {
 export function updateCameraMovement() {
     if (!controls.isLocked) return;
 
-    const speed = 0.07;
+    const baseSpeed = 0.06;
+    const runSpeed = 0.1;
+    const sprinting = isRunning && stamina > 0;
+    const speed = sprinting ? runSpeed : baseSpeed;
+
     const object = controls.getObject();
 
     previousPosition.copy(object.position);
@@ -108,4 +164,67 @@ export function updateCameraMovement() {
             return;
         }
     }
+    const deltaTime = 1 / 60; // atau hitung dari clock.getDelta()
+
+    if (sprinting) {
+        stamina = Math.max(0, stamina - sprintDrain * deltaTime);
+    } else {
+        stamina = Math.min(maxStamina, stamina + staminaRegen * deltaTime);
+    }
+
+    if (sprinting && (moveForward || moveBackward || moveLeft || moveRight)) {
+        headBobTimer += deltaTime * 10;
+        const bobAmount = 0.02;
+        const object = controls.getObject();
+        object.position.y += Math.sin(headBobTimer) * bobAmount;
+    } else {
+        headBobTimer = 0;
+    }
+
+    if (sprinting && !sound.isPlaying) {
+        sound.play();
+        if (walkSound.isPlaying) walkSound.stop(); // jangan overlap
+    } else if (!sprinting && sound.isPlaying) {
+        sound.stop();
+    }
+
+    const isMoving = moveForward || moveBackward || moveLeft || moveRight;
+
+    if (!sprinting && isMoving) {
+        if (!walkSound.isPlaying) walkSound.play();
+    } else {
+        if (walkSound.isPlaying) walkSound.stop();
+    }
+
+    velocityY += gravity * deltaTime;
+    object.position.y += velocityY;
+
+    // Deteksi "lantai"
+    // Raycaster untuk cek tanah di bawah player
+    downRay.set(object.position, downDirection);
+
+    // Hanya intersect dengan object yang ada di scene
+    const intersects = downRay.intersectObjects(sceneRef.children, true);
+
+    // Batas bawah maksimum (misal tinggi kaki 1.7 meter di atas permukaan)
+    const maxRayDistance = 2;
+
+    const validHits = intersects.filter(
+        (hit) => hit.distance <= maxRayDistance
+    );
+
+    if (validHits.length > 0) {
+        isOnGround = true;
+
+        // Snap ke permukaan hanya jika player jatuh
+        if (velocityY <= 0) {
+            object.position.y = validHits[0].point.y + 1.6;
+            velocityY = 0;
+        }
+    } else {
+        isOnGround = false;
+    }
+
+    const fill = document.getElementById("stamina-fill");
+    if (fill) fill.style.width = `${(stamina / maxStamina) * 100}%`;
 }

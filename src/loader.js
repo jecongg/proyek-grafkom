@@ -14,8 +14,10 @@ export function loadModels(scene, camera) {
         scene.add(model);
 
         roomBox = new THREE.Box3().setFromObject(model);
-        const helper = new Box3Helper(roomBox, 0x00ff00);
-        scene.add(helper);
+        roomBox.expandByScalar(-0.9);
+
+        // const helper = new Box3Helper(roomBox, 0x00ff00);
+        // scene.add(helper);
 
         model.traverse((child) => {
             if (child.isMesh) {

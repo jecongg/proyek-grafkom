@@ -1,12 +1,14 @@
 import { scene, camera, renderer } from './sceneSetup.js';
 import { addLighting } from './lighting.js';
-import { setupControls, updateCameraMovement } from './controls.js';
+import { setupControls, updateCameraMovement, setScene } from './controls.js';
 import { loadModels } from './loader.js';
 import { sphere, torus, cone, cylinder, dodecahedron } from './obj.js';
 
 addLighting(scene);
 setupControls(camera, renderer);
 loadModels(scene, camera);
+setScene(scene);
+
 
 // scene.add(sphere, torus, cone, cylinder, dodecahedron);
 
