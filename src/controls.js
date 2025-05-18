@@ -35,8 +35,16 @@ export function setScene(scene) {
 export function setupControls(camera, renderer) {
     controls = new PointerLockControls(camera, renderer.domElement);
 
-    document.body.addEventListener("click", () => {
+    const overlay = document.getElementById("startOverlay");
+
+    overlay.addEventListener("click", () => {
         controls.lock();
+    });
+    controls.addEventListener("lock", () => {
+        overlay.style.display = "none";
+    });
+    controls.addEventListener("unlock", () => {
+        overlay.style.display = "flex";
     });
 
     const listener = new THREE.AudioListener();

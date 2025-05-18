@@ -6,7 +6,13 @@ import { sphere, torus, cone, cylinder, dodecahedron } from './obj.js';
 
 addLighting(scene);
 setupControls(camera, renderer);
-loadModels(scene, camera);
+loadModels(scene, camera, () => {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('startOverlay').style.display = 'flex';
+
+  setupControls(camera, renderer); // aktifkan kontrol hanya setelah siap
+});
+
 setScene(scene);
 
 

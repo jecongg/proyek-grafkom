@@ -8,10 +8,87 @@
                 margin: 0;
                 overflow: hidden;
             }
+            #loadingScreen {
+                position: fixed;
+                inset: 0;
+                background: black;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                z-index: 2000;
+                font-family: sans-serif;
+            }
+
+            #loadingContainer {
+                width: 60%;
+                max-width: 500px;
+                text-align: center;
+            }
+
+            #loadingBar {
+                width: 100%;
+                height: 20px;
+                background: #333;
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+
+            #loadingFill {
+                height: 100%;
+                width: 0%;
+                background: linear-gradient(90deg, #0f0, #0ff);
+                transition: width 0.2s ease;
+            }
+
+            #loadingText {
+                color: white;
+                font-size: 1rem;
+            }
+
+            #startOverlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.75);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                font-family: sans-serif;
+            }
+
+            #startMessage {
+                color: white;
+                font-size: 2rem;
+                padding: 1rem 2rem;
+                background: #222;
+                border: 2px solid white;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: transform 0.2s ease;
+            }
+
+            #startMessage:hover {
+                transform: scale(1.05);
+            }
         </style>
     </head>
+    <div id="loadingScreen">
+        <div id="loadingContainer">
+            <div id="loadingBar">
+                <div id="loadingFill"></div>
+            </div>
+            <div id="loadingText">Loading... 0%</div>
+        </div>
+    </div>
+
+    <div id="startOverlay" style="display: none">
+        <div id="startMessage">Click to Play</div>
+    </div>
     <body>
         <script type="module" src="/src/main.js"></script>
+
         <div
             id="stamina-bar"
             style="
