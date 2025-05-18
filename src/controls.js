@@ -1,6 +1,6 @@
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
-import { roomBox, collidableBoxes } from "./loader.js";
+import { roomBox, collidableBoxes, weapons } from "./loader.js";
 import { scene } from "./sceneSetup.js";
 
 let controls;
@@ -10,6 +10,15 @@ let stamina = 100;
 const maxStamina = 100;
 let sound;
 let walkSound;
+let m4SwitchSound;
+let pistolSwitchSound;
+let knifeSwitchSound;
+let soundsLoaded = {
+    m4: false,
+    pistol: false,
+    knife: false
+};
+let currentWeapon = null; // Tambahkan deklarasi currentWeapon
 const sprintDrain = 20; // stamina/saat lari
 const staminaRegen = 10; // stamina/regen per detik
 let moveForward = false,
@@ -47,6 +56,22 @@ export function setupControls(camera, renderer) {
         overlay.style.display = "flex";
     });
 
+    document.addEventListener("keydown", (event) => {
+        if (controls.isLocked) {
+            switch (event.code) {
+                case "Digit1":
+                    switchWeapon(1); // M4
+                    break;
+                case "Digit2":
+                    switchWeapon(2); // Pistol
+                    break;
+                case "Digit3":
+                    switchWeapon(3); // Knife
+                    break;
+            }
+        }
+    });
+
     const listener = new THREE.AudioListener();
     camera.add(listener);
 
@@ -63,6 +88,27 @@ export function setupControls(camera, renderer) {
         walkSound.setBuffer(buffer);
         walkSound.setLoop(true);
         walkSound.setVolume(0.4); // lebih pelan dari sprint
+    });
+
+    m4SwitchSound = new THREE.Audio(listener);
+    audioLoader.load("/assets/sounds/m4_switch.mp3", (buffer) => {
+        m4SwitchSound.setBuffer(buffer);
+        m4SwitchSound.setVolume(1.0);
+        soundsLoaded.m4 = true;
+    });
+
+    pistolSwitchSound = new THREE.Audio(listener);
+    audioLoader.load("/assets/sounds/pistol_switch.mp3", (buffer) => {
+        pistolSwitchSound.setBuffer(buffer);
+        pistolSwitchSound.setVolume(1.0);
+        soundsLoaded.pistol = true;
+    });
+
+    knifeSwitchSound = new THREE.Audio(listener);
+    audioLoader.load("/assets/sounds/knife_switch.mp3", (buffer) => {
+        knifeSwitchSound.setBuffer(buffer);
+        knifeSwitchSound.setVolume(1.0);
+        soundsLoaded.knife = true;
     });
 
     document.addEventListener("keydown", (event) => {
@@ -112,6 +158,11 @@ export function setupControls(camera, renderer) {
                 break;
         }
     });
+    
+    // Default weapon
+    setTimeout(() => {
+        switchWeapon(1); // Set default ke M4 setelah beberapa waktu untuk memastikan assets sudah dimuat
+    }, 1000);
 }
 
 export function updateCameraMovement() {
@@ -135,7 +186,6 @@ export function updateCameraMovement() {
         return;
     }
 
-    // ✅ Buat playerBox SEBELUM digunakan
     const playerBox = new THREE.Box3().setFromCenterAndSize(
         object.position.clone(),
         new THREE.Vector3(0.7, 3, 0.7)
@@ -172,7 +222,7 @@ export function updateCameraMovement() {
             return;
         }
     }
-    const deltaTime = 1 / 60; // atau hitung dari clock.getDelta()
+    const deltaTime = 1 / 60; 
 
     if (sprinting) {
         stamina = Math.max(0, stamina - sprintDrain * deltaTime);
@@ -191,7 +241,7 @@ export function updateCameraMovement() {
 
     if (sprinting && !sound.isPlaying) {
         sound.play();
-        if (walkSound.isPlaying) walkSound.stop(); // jangan overlap
+        if (walkSound.isPlaying) walkSound.stop(); 
     } else if (!sprinting && sound.isPlaying) {
         sound.stop();
     }
@@ -235,4 +285,57 @@ export function updateCameraMovement() {
 
     const fill = document.getElementById("stamina-fill");
     if (fill) fill.style.width = `${(stamina / maxStamina) * 100}%`;
+}
+
+function playWeaponSound(soundObject) {
+    if (!soundObject) return;
+
+    if (soundObject.isPlaying) {
+        soundObject.stop();
+    }
+    
+    try {
+        soundObject.play();
+    } catch (error) {
+        console.error("Error playing sound:", error);
+    }
+}
+
+export function switchWeapon(weaponNumber) {
+    if (!weapons.pistol || !weapons.m4 || !weapons.knife) {
+        console.log("Weapons not loaded yet:", { pistol: weapons.pistol, m4: weapons.m4, knife: weapons.knife });
+        return;
+    }
+
+    if (weaponNumber === 1 && currentWeapon === weapons.m4) return;
+    if (weaponNumber === 2 && currentWeapon === weapons.pistol) return;
+    if (weaponNumber === 3 && currentWeapon === weapons.knife) return;
+
+    if (weaponNumber === 1) { // M4
+        weapons.pistol.visible = false;
+        weapons.m4.visible = true;
+        weapons.knife.visible = false;
+        currentWeapon = weapons.m4;
+        
+        if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
+            playWeaponSound(m4SwitchSound);
+        } 
+    } else if (weaponNumber === 2) { // Pistol
+        weapons.m4.visible = false;
+        weapons.pistol.visible = true;
+        weapons.knife.visible = false;
+        currentWeapon = weapons.pistol;
+        
+        if (soundsLoaded.pistol && pistolSwitchSound && pistolSwitchSound.buffer) {
+            playWeaponSound(pistolSwitchSound);
+        } 
+    } else if (weaponNumber === 3) { // Knife
+        weapons.m4.visible = false;
+        weapons.pistol.visible = false;
+        weapons.knife.visible = true;
+        currentWeapon = weapons.knife;
+        if (soundsLoaded.knife && knifeSwitchSound && knifeSwitchSound.buffer) {
+            playWeaponSound(knifeSwitchSound);
+        } 
+    }
 }
