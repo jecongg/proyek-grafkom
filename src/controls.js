@@ -2,6 +2,7 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import * as THREE from "three";
 import { roomBox, collidableBoxes, weapons } from "./loader.js";
 import { scene } from "./sceneSetup.js";
+import { pistolAnimations } from "./loader.js";
 
 let controls;
 let isRunning = false;
@@ -16,7 +17,7 @@ let knifeSwitchSound;
 let soundsLoaded = {
     m4: false,
     pistol: false,
-    knife: false
+    knife: false,
 };
 let currentWeapon = null; // Tambahkan deklarasi currentWeapon
 const sprintDrain = 20; // stamina/saat lari
@@ -68,6 +69,27 @@ export function setupControls(camera, renderer) {
                 case "Digit3":
                     switchWeapon(3); // Knife
                     break;
+            }
+        }
+    });
+
+    document.addEventListener("mousedown", (e) => {
+        if (e.button === 0) {
+            // klik kiri
+            const fire = pistolAnimations["Armature|Fire"];
+            const idle = pistolAnimations["Armature|Idle"];
+
+            if (fire) {
+                console.log("halo")
+                fire.reset().play();
+                fire.clampWhenFinished = true;
+                fire.setLoop(THREE.LoopOnce);
+
+                if (idle) {
+                    fire.onFinished = () => {
+                        idle.reset().play();
+                    };
+                }
             }
         }
     });
@@ -158,7 +180,7 @@ export function setupControls(camera, renderer) {
                 break;
         }
     });
-    
+
     // Default weapon
     setTimeout(() => {
         switchWeapon(1); // Set default ke M4 setelah beberapa waktu untuk memastikan assets sudah dimuat
@@ -222,7 +244,7 @@ export function updateCameraMovement() {
             return;
         }
     }
-    const deltaTime = 1 / 60; 
+    const deltaTime = 1 / 60;
 
     if (sprinting) {
         stamina = Math.max(0, stamina - sprintDrain * deltaTime);
@@ -241,7 +263,7 @@ export function updateCameraMovement() {
 
     if (sprinting && !sound.isPlaying) {
         sound.play();
-        if (walkSound.isPlaying) walkSound.stop(); 
+        if (walkSound.isPlaying) walkSound.stop();
     } else if (!sprinting && sound.isPlaying) {
         sound.stop();
     }
@@ -293,7 +315,7 @@ function playWeaponSound(soundObject) {
     if (soundObject.isPlaying) {
         soundObject.stop();
     }
-    
+
     try {
         soundObject.play();
     } catch (error) {
@@ -303,7 +325,11 @@ function playWeaponSound(soundObject) {
 
 export function switchWeapon(weaponNumber) {
     if (!weapons.pistol || !weapons.m4 || !weapons.knife) {
-        console.log("Weapons not loaded yet:", { pistol: weapons.pistol, m4: weapons.m4, knife: weapons.knife });
+        console.log("Weapons not loaded yet:", {
+            pistol: weapons.pistol,
+            m4: weapons.m4,
+            knife: weapons.knife,
+        });
         return;
     }
 
@@ -311,31 +337,38 @@ export function switchWeapon(weaponNumber) {
     if (weaponNumber === 2 && currentWeapon === weapons.pistol) return;
     if (weaponNumber === 3 && currentWeapon === weapons.knife) return;
 
-    if (weaponNumber === 1) { // M4
+    if (weaponNumber === 1) {
+        // M4
         weapons.pistol.visible = false;
         weapons.m4.visible = true;
         weapons.knife.visible = false;
         currentWeapon = weapons.m4;
-        
+
         if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
             playWeaponSound(m4SwitchSound);
-        } 
-    } else if (weaponNumber === 2) { // Pistol
+        }
+    } else if (weaponNumber === 2) {
+        // Pistol
         weapons.m4.visible = false;
         weapons.pistol.visible = true;
         weapons.knife.visible = false;
         currentWeapon = weapons.pistol;
-        
-        if (soundsLoaded.pistol && pistolSwitchSound && pistolSwitchSound.buffer) {
+
+        if (
+            soundsLoaded.pistol &&
+            pistolSwitchSound &&
+            pistolSwitchSound.buffer
+        ) {
             playWeaponSound(pistolSwitchSound);
-        } 
-    } else if (weaponNumber === 3) { // Knife
+        }
+    } else if (weaponNumber === 3) {
+        // Knife
         weapons.m4.visible = false;
         weapons.pistol.visible = false;
         weapons.knife.visible = true;
         currentWeapon = weapons.knife;
         if (soundsLoaded.knife && knifeSwitchSound && knifeSwitchSound.buffer) {
             playWeaponSound(knifeSwitchSound);
-        } 
+        }
     }
 }

@@ -15,7 +15,7 @@ export function addLighting(scene) {
   pointLight.position.set(0, 1.5, 0);
   scene.add(pointLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-  directionalLight.position.set(1, 1, -1);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  directionalLight.position.set(1, 2, -1);
   scene.add(directionalLight);
 }

@@ -2,6 +2,9 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
 import { mod } from "three/tsl";
 
+export const pistolAnimations = {};
+export let pistolMixer;
+
 export let roomBox = null;
 export const collidableBoxes = [];
 export let currentWeapon = null;
@@ -17,7 +20,9 @@ export function loadModels(scene, camera, onLoaded) {
     loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
         const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
         document.getElementById("loadingFill").style.width = percent + "%";
-        document.getElementById("loadingText").innerText = `Loading... ${percent}%`;
+        document.getElementById(
+            "loadingText"
+        ).innerText = `Loading... ${percent}%`;
     };
 
     loadingManager.onLoad = () => {
@@ -54,14 +59,57 @@ export function loadModels(scene, camera, onLoaded) {
         });
     });
 
-    loader.load("/assets/models/weapon/pistol.glb", (gltf) => {
+    loader.load("/assets/models/weapon/pistol_animated.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(0.015, 0.015, 0.015);
-        model.position.set(0.3, -0.2, -0.4);
+        model.scale.set(0.5, 0.5, 0.5);
+        model.position.set(0.15, -0.15, -0.2);
         model.rotation.y = Math.PI;
         weapons.pistol = model;
         camera.add(model);
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        // 🔄 Animation setup
+        pistolMixer = new THREE.AnimationMixer(model);
+
+        // 🔍 Lihat semua animasi
+        gltf.animations.forEach((clip) => {
+            console.log("🔹 Animasi tersedia:", clip.name);
+        });
+
+        // ▶️ Jalankan animasi pertama (atau pilih berdasarkan nama)
+        const action = pistolMixer.clipAction(gltf.animations[0]);
+        action.play();
+
+        if (size.x < 5 && size.y > 0.5 && size.z < 5) {
+            // collidableBoxes.push(box);
+            // Optional: add helper
+            const helper = new THREE.Box3Helper(box, 0xff0000);
+            scene.add(helper);
+        }
         currentWeapon = model;
+
+        // 🔄 Setup Animation
+        pistolMixer = new THREE.AnimationMixer(model);
+
+        gltf.animations.forEach((clip) => {
+            console.log("🔹 Animasi tersedia:", clip.name);
+            pistolAnimations[clip.name] = pistolMixer.clipAction(clip);
+        });
+
+        // Mulai idle sebagai default
+        pistolAnimations["Armature|Idle"].play();
+        document.addEventListener("mousedown", (e) => {
+            if (e.button === 0) {
+                // 0 = klik kiri
+                const fire = pistolAnimations["Armature|Fire"];
+                if (fire) {
+                    fire.reset().play();
+                }
+            }
+        });
     });
 
     loader.load("/assets/models/weapon/m4.glb", (gltf) => {
@@ -76,9 +124,9 @@ export function loadModels(scene, camera, onLoaded) {
 
     loader.load("/assets/models/weapon/knife.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(0.1, 0.1, 0.1); 
+        model.scale.set(0.1, 0.1, 0.1);
         model.position.set(0.5, -0.8, -1);
-        model.rotation.y = 0.8*Math.PI; 
+        model.rotation.y = 0.8 * Math.PI;
         weapons.knife = model;
         model.visible = false;
         camera.add(model);
@@ -86,7 +134,7 @@ export function loadModels(scene, camera, onLoaded) {
 
     loader.load("/assets/models/target/targets_some.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(0.07, 0.065, 0.09); 
+        model.scale.set(0.07, 0.065, 0.09);
         model.position.set(20, -0.4, -5);
         scene.add(model);
     });
@@ -95,21 +143,20 @@ export function loadModels(scene, camera, onLoaded) {
         const model = gltf.scene;
         model.scale.set(0.8, 0.8, 0.8);
         model.position.set(-13, 0.08, -30);
-        model.rotation.y = -Math.PI/2;
+        model.rotation.y = -Math.PI / 2;
         scene.add(model);
     });
 
-
     loader.load("/assets/models/target/boxing_bag.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(50,60,50);
+        model.scale.set(50, 60, 50);
         model.position.set(-15, -2, 0);
         scene.add(model);
     });
 
     loader.load("/assets/models/target/boxing_ring.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(1.5,1,1.5);
+        model.scale.set(1.5, 1, 1.5);
         model.position.set(0, -1, 18);
         scene.add(model);
     });
@@ -132,11 +179,8 @@ export function loadModels(scene, camera, onLoaded) {
         model.scale.set(0.5, 0.5, 0.5);
         model.position.set(-16, -0.5, 15);
         model.rotation.set(0, 0, 0);
-        model.rotation.y = Math.PI/2;
+        model.rotation.y = Math.PI / 2;
 
         scene.add(model);
     });
 }
-
-
-
