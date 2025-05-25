@@ -1,12 +1,13 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
-import { mod } from "three/tsl";
 
 export const pistolAnimations = {};
 export let pistolMixer;
 
 export let roomBox = null;
 export const collidableBoxes = [];
+export const shootableTargets = [];
+
 export let currentWeapon = null;
 export let weapons = {
     pistol: null,
@@ -14,19 +15,50 @@ export let weapons = {
     knife: null,
 };
 
+// Fungsi reusable untuk memuat model dengan collision box
+function loadModelWithCollision(loader, scene, url, scale, position, rotationY = 0, addToShootable = true) {
+    loader.load(url, (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(...scale);
+        model.position.set(...position);
+        model.rotation.y = rotationY;
+
+        model.updateMatrixWorld(true); // Update transformasi dunia
+        scene.add(model);
+
+        model.traverse((child) => {
+            if (child.isMesh) {
+                child.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(child);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+
+                if (size.x < 5 && size.y > 0.5 && size.z < 5) {
+                    if (addToShootable) {
+                        shootableTargets.push(box);
+                    } else {
+                        collidableBoxes.push(box);
+                    }
+
+                    // Tambah helper untuk debugging (opsional)
+                    // const helper = new THREE.Box3Helper(box, 0xff0000);
+                    // scene.add(helper);
+                }
+            }
+        });
+    });
+}
+
 export function loadModels(scene, camera, onLoaded) {
     const loadingManager = new THREE.LoadingManager();
 
     loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
         const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
         document.getElementById("loadingFill").style.width = percent + "%";
-        document.getElementById(
-            "loadingText"
-        ).innerText = `Loading... ${percent}%`;
+        document.getElementById("loadingText").innerText = `Loading... ${percent}%`;
     };
 
     loadingManager.onLoad = () => {
-        // Semua selesai
         document.getElementById("loadingScreen").style.display = "none";
         document.getElementById("startOverlay").style.display = "flex";
         if (typeof onLoaded === "function") onLoaded();
@@ -34,6 +66,7 @@ export function loadModels(scene, camera, onLoaded) {
 
     const loader = new GLTFLoader(loadingManager);
 
+    // Load Room
     loader.load("/assets/models/coba/empty_old_garage_room.glb", (gltf) => {
         const model = gltf.scene;
         model.scale.set(0.5, 0.5, 0.5);
@@ -51,14 +84,13 @@ export function loadModels(scene, camera, onLoaded) {
 
                 if (size.x < 5 && size.y > 0.5 && size.z < 5) {
                     collidableBoxes.push(box);
-                    // Optional: add helper
-                    const helper = new THREE.Box3Helper(box, 0xff0000);
-                    // scene.add(helper);
+                    shootableTargets.push(box);
                 }
             }
         });
     });
 
+    // Load Weapons
     loader.load("/assets/models/weapon/pistol_animated.glb", (gltf) => {
         const model = gltf.scene;
         model.scale.set(0.5, 0.5, 0.5);
@@ -67,49 +99,23 @@ export function loadModels(scene, camera, onLoaded) {
         weapons.pistol = model;
         camera.add(model);
 
+        pistolMixer = new THREE.AnimationMixer(model);
+        gltf.animations.forEach((clip) => {
+            pistolAnimations[clip.name] = pistolMixer.clipAction(clip);
+        });
+        pistolAnimations["Armature|Idle"].play();
+
         const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         box.getSize(size);
-
-        // 🔄 Animation setup
-        pistolMixer = new THREE.AnimationMixer(model);
-
-        // 🔍 Lihat semua animasi
-        gltf.animations.forEach((clip) => {
-            console.log("🔹 Animasi tersedia:", clip.name);
-        });
-
-        // ▶️ Jalankan animasi pertama (atau pilih berdasarkan nama)
-        const action = pistolMixer.clipAction(gltf.animations[0]);
-        action.play();
-
         if (size.x < 5 && size.y > 0.5 && size.z < 5) {
             // collidableBoxes.push(box);
             // Optional: add helper
             const helper = new THREE.Box3Helper(box, 0xff0000);
             scene.add(helper);
         }
+
         currentWeapon = model;
-
-        // 🔄 Setup Animation
-        pistolMixer = new THREE.AnimationMixer(model);
-
-        gltf.animations.forEach((clip) => {
-            console.log("🔹 Animasi tersedia:", clip.name);
-            pistolAnimations[clip.name] = pistolMixer.clipAction(clip);
-        });
-
-        // Mulai idle sebagai default
-        pistolAnimations["Armature|Idle"].play();
-        document.addEventListener("mousedown", (e) => {
-            if (e.button === 0) {
-                // 0 = klik kiri
-                const fire = pistolAnimations["Armature|Fire"];
-                if (fire) {
-                    fire.reset().play();
-                }
-            }
-        });
     });
 
     loader.load("/assets/models/weapon/m4.glb", (gltf) => {
@@ -132,55 +138,13 @@ export function loadModels(scene, camera, onLoaded) {
         camera.add(model);
     });
 
-    loader.load("/assets/models/target/targets_some.glb", (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(0.07, 0.065, 0.09);
-        model.position.set(20, -0.4, -5);
-        scene.add(model);
-    });
+    // Load Targets (Gunakan fungsi reusable)
+    loadModelWithCollision(loader, scene, "/assets/models/target/targets_some.glb", [0.07, 0.065, 0.09], [20, -0.4, -5]);
+    loadModelWithCollision(loader, scene, "/assets/models/target/steel_target.glb", [0.8, 0.8, 0.8], [-13, 0.08, -30], -Math.PI / 2);
+    loadModelWithCollision(loader, scene, "/assets/models/target/boxing_ring.glb", [1.5, 1, 1.5], [0, -1, 18]);
+    loadModelWithCollision(loader, scene, "/assets/models/target/body_training.glb", [2, 1.5, 0.7], [14, -0.5, -10]);
 
-    loader.load("/assets/models/target/steel_target.glb", (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(0.8, 0.8, 0.8);
-        model.position.set(-13, 0.08, -30);
-        model.rotation.y = -Math.PI / 2;
-        scene.add(model);
-    });
+    loadModelWithCollision(loader, scene, "/assets/models/target/boxing_bag.glb", [50, 60, 50], [-15, -2, 0], 0, true);
 
-    loader.load("/assets/models/target/boxing_bag.glb", (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(50, 60, 50);
-        model.position.set(-15, -2, 0);
-        scene.add(model);
-    });
-
-    loader.load("/assets/models/target/boxing_ring.glb", (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(1.5, 1, 1.5);
-        model.position.set(0, -1, 18);
-        scene.add(model);
-    });
-
-    loader.load("/assets/models/target/body_training.glb", (gltf) => {
-        console.log("Body Training model loaded successfully!");
-        const model = gltf.scene;
-
-        model.scale.set(2, 1.5, 0.7);
-        model.position.set(14, -0.5, -10);
-        model.rotation.set(0, 0, 0);
-
-        scene.add(model);
-    });
-
-    loader.load("/assets/models/target/gym_equipment.glb", (gltf) => {
-        console.log("Body Training model loaded successfully!");
-        const model = gltf.scene;
-
-        model.scale.set(0.5, 0.5, 0.5);
-        model.position.set(-16, -0.5, 15);
-        model.rotation.set(0, 0, 0);
-        model.rotation.y = Math.PI / 2;
-
-        scene.add(model);
-    });
+    loadModelWithCollision(loader, scene, "/assets/models/target/gym_equipment.glb", [0.5, 0.5, 0.5], [-16, -0.5, 15], Math.PI / 2, true);
 }
