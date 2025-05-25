@@ -333,42 +333,121 @@ export function switchWeapon(weaponNumber) {
         return;
     }
 
-    if (weaponNumber === 1 && currentWeapon === weapons.m4) return;
-    if (weaponNumber === 2 && currentWeapon === weapons.pistol) return;
-    if (weaponNumber === 3 && currentWeapon === weapons.knife) return;
+    // Prevent switching to the same weapon
+    if ((weaponNumber === 1 && currentWeapon === weapons.m4) ||
+        (weaponNumber === 2 && currentWeapon === weapons.pistol) ||
+        (weaponNumber === 3 && currentWeapon === weapons.knife)) {
+        return;
+    }
 
-    if (weaponNumber === 1) {
-        // M4
-        weapons.pistol.visible = false;
-        weapons.m4.visible = true;
-        weapons.knife.visible = false;
-        currentWeapon = weapons.m4;
+    const hideAnim = pistolAnimations['Armature|Hide'];
+    const unhideAnim = pistolAnimations['Armature|Unhide'];
+    const idleAnim = pistolAnimations['Armature|Idle'];
+    const pistolMixer = hideAnim ? hideAnim.getMixer() : (unhideAnim ? unhideAnim.getMixer() : (idleAnim ? idleAnim.getMixer() : null));
 
-        if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
-            playWeaponSound(m4SwitchSound);
+    // Stop all current pistol animations
+    if (pistolMixer) {
+        // A bit of a forceful way, but ensures no animation is missed.
+        // More granular stop() calls are made later as well.
+        Object.values(pistolAnimations).forEach(anim => {
+            if (anim && anim.isRunning()) {
+                anim.stop();
+            }
+        });
+    }
+
+    if (weaponNumber === 1) { // Switch to M4
+        if (currentWeapon === weapons.pistol && hideAnim && pistolMixer) {
+            hideAnim.reset();
+            hideAnim.setLoop(THREE.LoopOnce);
+            hideAnim.clampWhenFinished = true;
+            hideAnim.play();
+
+            const onFinishedHide = (e) => {
+                if (e.action === hideAnim) {
+                    weapons.pistol.visible = false;
+                    weapons.m4.visible = true;
+                    weapons.knife.visible = false;
+                    currentWeapon = weapons.m4;
+                    if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
+                        playWeaponSound(m4SwitchSound);
+                    }
+                    pistolMixer.removeEventListener('finished', onFinishedHide);
+                }
+            };
+            pistolMixer.addEventListener('finished', onFinishedHide);
+        } else {
+            weapons.pistol.visible = false;
+            weapons.m4.visible = true;
+            weapons.knife.visible = false;
+            currentWeapon = weapons.m4;
+            if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
+                playWeaponSound(m4SwitchSound);
+            }
         }
-    } else if (weaponNumber === 2) {
-        // Pistol
-        weapons.m4.visible = false;
-        weapons.pistol.visible = true;
-        weapons.knife.visible = false;
-        currentWeapon = weapons.pistol;
+    } else if (weaponNumber === 2) { // Switch to Pistol
+        // This case is already handled by the initial check, but kept for clarity
+        if (currentWeapon === weapons.pistol) return;
 
-        if (
-            soundsLoaded.pistol &&
-            pistolSwitchSound &&
-            pistolSwitchSound.buffer
-        ) {
-            playWeaponSound(pistolSwitchSound);
+        if (unhideAnim && idleAnim && pistolMixer) {
+            weapons.m4.visible = false;
+            weapons.knife.visible = false;
+            weapons.pistol.visible = true; // Make pistol visible before unhide animation
+
+            unhideAnim.reset();
+            unhideAnim.setLoop(THREE.LoopOnce);
+            unhideAnim.clampWhenFinished = true;
+            unhideAnim.play();
+            
+            currentWeapon = weapons.pistol; // Set current weapon immediately
+            if (soundsLoaded.pistol && pistolSwitchSound && pistolSwitchSound.buffer) {
+                playWeaponSound(pistolSwitchSound);
+            }
+
+            const onFinishedUnhide = (e) => {
+                if (e.action === unhideAnim) {
+                    idleAnim.reset().play(); // Loop by default
+                    pistolMixer.removeEventListener('finished', onFinishedUnhide);
+                }
+            };
+            pistolMixer.addEventListener('finished', onFinishedUnhide);
+        } else { // Fallback if animations are not available
+            weapons.m4.visible = false;
+            weapons.pistol.visible = true;
+            weapons.knife.visible = false;
+            currentWeapon = weapons.pistol;
+            if (soundsLoaded.pistol && pistolSwitchSound && pistolSwitchSound.buffer) {
+                playWeaponSound(pistolSwitchSound);
+            }
         }
-    } else if (weaponNumber === 3) {
-        // Knife
-        weapons.m4.visible = false;
-        weapons.pistol.visible = false;
-        weapons.knife.visible = true;
-        currentWeapon = weapons.knife;
-        if (soundsLoaded.knife && knifeSwitchSound && knifeSwitchSound.buffer) {
-            playWeaponSound(knifeSwitchSound);
+    } else if (weaponNumber === 3) { // Switch to Knife
+        if (currentWeapon === weapons.pistol && hideAnim && pistolMixer) {
+            hideAnim.reset();
+            hideAnim.setLoop(THREE.LoopOnce);
+            hideAnim.clampWhenFinished = true;
+            hideAnim.play();
+
+            const onFinishedHide = (e) => {
+                if (e.action === hideAnim) {
+                    weapons.pistol.visible = false;
+                    weapons.m4.visible = false;
+                    weapons.knife.visible = true;
+                    currentWeapon = weapons.knife;
+                    if (soundsLoaded.knife && knifeSwitchSound && knifeSwitchSound.buffer) {
+                        playWeaponSound(knifeSwitchSound);
+                    }
+                    pistolMixer.removeEventListener('finished', onFinishedHide);
+                }
+            };
+            pistolMixer.addEventListener('finished', onFinishedHide);
+        } else {
+            weapons.m4.visible = false;
+            weapons.pistol.visible = false;
+            weapons.knife.visible = true;
+            currentWeapon = weapons.knife;
+            if (soundsLoaded.knife && knifeSwitchSound && knifeSwitchSound.buffer) {
+                playWeaponSound(knifeSwitchSound);
+            }
         }
     }
 }
