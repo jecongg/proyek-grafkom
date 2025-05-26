@@ -39,6 +39,19 @@ const downDirection = new THREE.Vector3(0, -1, 0);
 
 let sceneRef = null;
 
+// Tambahkan variabel ammo di bagian atas file
+let ammo = {
+    m4: {
+        current: 30,
+        max: 30,
+        reserve: 90,
+    },
+    pistol: {
+        current: 12,
+        max: 12,
+        reserve: 36,
+    },
+};
 
 export function setScene(scene) {
     sceneRef = scene;
@@ -76,23 +89,33 @@ export function setupControls(camera, renderer) {
     });
 
     document.addEventListener("mousedown", (e) => {
-        if (e.button === 0) {
+        if (e.button === 0 && controls.isLocked) {
             // klik kiri
             const fire = pistolAnimations["Armature|Fire"];
             const idle = pistolAnimations["Armature|Idle"];
 
-            // 🔫 Buat peluru (hanya kalau senjata aktif adalah pistol)
-            if (currentWeapon === weapons.pistol) {
+            // Cek ammo sebelum menembak
+            if (currentWeapon === weapons.pistol && ammo.pistol.current > 0) {
                 const cameraObj = controls.getObject();
                 const origin = cameraObj.position.clone();
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(
                     cameraObj.quaternion
                 );
                 spawnBullet(origin, direction);
+                ammo.pistol.current--;
+                updateAmmoDisplay();
+            } else if (currentWeapon === weapons.m4 && ammo.m4.current > 0) {
+                const cameraObj = controls.getObject();
+                const origin = cameraObj.position.clone();
+                const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(
+                    cameraObj.quaternion
+                );
+                spawnBullet(origin, direction);
+                ammo.m4.current--;
+                updateAmmoDisplay();
             }
 
-            if (fire) {
-                console.log("halo");
+            if (fire && (currentWeapon === weapons.pistol || currentWeapon === weapons.m4)) {
                 fire.reset().play();
                 fire.clampWhenFinished = true;
                 fire.setLoop(THREE.LoopOnce);
@@ -103,6 +126,13 @@ export function setupControls(camera, renderer) {
                     };
                 }
             }
+        }
+    });
+
+    // Tambahkan event listener untuk reload (tombol R)
+    document.addEventListener("keydown", (event) => {
+        if (event.code === "KeyR" && controls.isLocked) {
+            reload();
         }
     });
 
@@ -335,6 +365,52 @@ function playWeaponSound(soundObject) {
     }
 }
 
+// Fungsi untuk reload
+function reload() {
+    if (currentWeapon === weapons.pistol && ammo.pistol.reserve > 0) {
+        const reloadAnim = pistolAnimations["Armature|Reload"];
+        if (reloadAnim) {
+            reloadAnim.reset();
+            reloadAnim.setLoop(THREE.LoopOnce);
+            reloadAnim.clampWhenFinished = true;
+            reloadAnim.play();
+
+            reloadAnim.onFinished = () => {
+                const needed = ammo.pistol.max - ammo.pistol.current;
+                const available = Math.min(needed, ammo.pistol.reserve);
+                ammo.pistol.current += available;
+                ammo.pistol.reserve -= available;
+                updateAmmoDisplay();
+                
+                const idleAnim = pistolAnimations["Armature|Idle"];
+                if (idleAnim) idleAnim.reset().play();
+            };
+        }
+    } else if (currentWeapon === weapons.m4 && ammo.m4.reserve > 0) {
+        // M4 reload logic
+        const needed = ammo.m4.max - ammo.m4.current;
+        const available = Math.min(needed, ammo.m4.reserve);
+        ammo.m4.current += available;
+        ammo.m4.reserve -= available;
+        updateAmmoDisplay();
+    }
+}
+
+// Fungsi untuk update display ammo
+function updateAmmoDisplay() {
+    const ammoDisplay = document.getElementById("ammo-display");
+    if (currentWeapon === weapons.pistol) {
+        ammoDisplay.textContent = `${ammo.pistol.current}/${ammo.pistol.reserve}`;
+    } else if (currentWeapon === weapons.m4) {
+        ammoDisplay.textContent = `${ammo.m4.current}/${ammo.m4.reserve}`;
+    } else if (currentWeapon === weapons.knife) {
+        ammoDisplay.textContent = `∞`; // Simbol infinity untuk pisau
+    } else {
+        ammoDisplay.textContent = "";
+    }
+}
+
+// Update fungsi switchWeapon untuk update ammo display
 export function switchWeapon(weaponNumber) {
     if (!weapons.pistol || !weapons.m4 || !weapons.knife) {
         console.log("Weapons not loaded yet:", {
@@ -390,11 +466,8 @@ export function switchWeapon(weaponNumber) {
                     weapons.m4.visible = true;
                     weapons.knife.visible = false;
                     currentWeapon = weapons.m4;
-                    if (
-                        soundsLoaded.m4 &&
-                        m4SwitchSound &&
-                        m4SwitchSound.buffer
-                    ) {
+                    updateAmmoDisplay(); // Update display after weapon switch
+                    if (soundsLoaded.m4 && m4SwitchSound) {
                         playWeaponSound(m4SwitchSound);
                     }
                     pistolMixer.removeEventListener("finished", onFinishedHide);
@@ -406,7 +479,8 @@ export function switchWeapon(weaponNumber) {
             weapons.m4.visible = true;
             weapons.knife.visible = false;
             currentWeapon = weapons.m4;
-            if (soundsLoaded.m4 && m4SwitchSound && m4SwitchSound.buffer) {
+            updateAmmoDisplay(); // Update display after weapon switch
+            if (soundsLoaded.m4 && m4SwitchSound) {
                 playWeaponSound(m4SwitchSound);
             }
         }
@@ -497,4 +571,7 @@ export function switchWeapon(weaponNumber) {
             }
         }
     }
+
+    // Update ammo display setelah switch weapon
+    updateAmmoDisplay();
 }
