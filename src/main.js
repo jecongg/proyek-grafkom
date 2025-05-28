@@ -59,7 +59,7 @@ function createWall(width, height, depth, position, rotation = 0) {
     return wall;
 }
 
-// Fungsi untuk membuat pintu - POSISI DIBALIK
+// Fungsi untuk membuat pintu - DENGAN RADIUS INTERAKSI DINAMIS
 function createDoor(width, height, position, rotation = 0) {
     const doorGroup = new THREE.Group();
     
@@ -125,16 +125,29 @@ function createDoor(width, height, position, rotation = 0) {
     handleBack.position.set(-width/3 - 0.2, 0, 0.05);
     doorBack.add(handleBack);
     
-    // Properti pintu - ARAH ROTASI DIBALIK
+    // Properti pintu - DENGAN RADIUS INTERAKSI BERDASARKAN LEBAR PINTU
     doorGroup.userData = {
         isOpen: false,
         isOpening: false,
-        targetRotation: 0, // Rotasi saat tertutup
-        openRotation: Math.PI / 2, // Rotasi saat terbuka (+90 derajat) - DIBALIK ARAH
-        closedRotation: 0, // Rotasi saat tertutup
-        interactionDistance: 2,
-        door: door
+        targetRotation: 0,
+        openRotation: Math.PI / 2,
+        closedRotation: 0,
+        interactionDistance: Math.max(width * 1.5, 1.5),
+        width: width,
+        door: door,
+        originalBox: new THREE.Box3().setFromObject(door),
+        collisionBox: new THREE.Box3().setFromObject(door),
+        openCollisionBox: new THREE.Box3().setFromCenterAndSize( // Box yang lebih kecil saat pintu terbuka
+            new THREE.Vector3(0, height/2, 0),
+            new THREE.Vector3(0.1, height, 0.1) // Hanya area engsel yang tetap collidable
+        )
     };
+    collidableBoxes.push(doorGroup.userData.collisionBox);
+    shootableTargets.push(doorGroup.userData.collisionBox);
+
+    
+    // Debug: Tampilkan radius interaksi
+    console.log(`Door created with width: ${width}, interaction distance: ${doorGroup.userData.interactionDistance}`);
     
     // Tambahkan collision box untuk frame (bukan untuk pintu yang bergerak)
     const frameBox = new THREE.Box3().setFromObject(frame);
@@ -142,6 +155,44 @@ function createDoor(width, height, position, rotation = 0) {
     
     scene.add(doorGroup);
     return doorGroup;
+}
+
+// Fungsi untuk cek apakah pemain dalam radius interaksi pintu
+function isWithinDoorInteractionRange(cameraPosition, doorGroup) {
+    const doorPosition = doorGroup.position.clone();
+    const distance = cameraPosition.distanceTo(doorPosition);
+    const interactionDistance = doorGroup.userData.interactionDistance;
+    
+    // Tambahan: Cek apakah pemain menghadap ke arah pintu (opsional)
+    // const cameraDirection = new THREE.Vector3();
+    // camera.getWorldDirection(cameraDirection);
+    // const toDoor = doorPosition.clone().sub(cameraPosition).normalize();
+    // const dotProduct = cameraDirection.dot(toDoor);
+    
+    // return distance <= interactionDistance && dotProduct > 0.3; // Menghadap ke pintu
+    
+    return distance <= interactionDistance;
+}
+
+// Fungsi visual untuk menampilkan radius interaksi (debug/development)
+function createInteractionRadiusHelper(doorGroup) {
+    const radius = doorGroup.userData.interactionDistance;
+    const geometry = new THREE.RingGeometry(radius - 0.1, radius, 32);
+    const material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    });
+    
+    const helper = new THREE.Mesh(geometry, material);
+    helper.position.copy(doorGroup.position);
+    helper.position.y = 0.1; // Sedikit di atas lantai
+    helper.rotation.x = -Math.PI / 2; // Horizontal
+    helper.userData.isDoorHelper = true;
+    
+    scene.add(helper);
+    return helper;
 }
 
 export function spawnBullet(origin, direction) {
@@ -200,6 +251,14 @@ function animate() {
             
             // Update collision box untuk pintu yang bergerak
             updateDoorCollision(object);
+            scene.traverse((object) => {
+                if (object.userData && object.userData.collisionBox) {
+                    // Pastikan collision box selalu ada di array collidableBoxes
+                    if (collidableBoxes.indexOf(object.userData.collisionBox) === -1) {
+                        collidableBoxes.push(object.userData.collisionBox);
+                    }
+                }
+            });
         }
     });
 
@@ -259,12 +318,38 @@ function animate() {
 }
 
 // Fungsi untuk update collision box pintu yang bergerak
+// Modifikasi fungsi updateDoorCollision()
 function updateDoorCollision(doorGroup) {
-    // Hapus collision box lama untuk pintu ini
-    for (let i = collidableBoxes.length - 1; i >= 0; i--) {
-        // Identifikasi collision box pintu berdasarkan posisi atau metadata
-        // Untuk sekarang, kita tidak update collision untuk pintu yang bergerak
-        // karena kompleksitas geometri yang berubah
+    if (!doorGroup.userData || !doorGroup.userData.collisionBox) return;
+    
+    const door = doorGroup.userData.door;
+    doorGroup.updateMatrixWorld();
+    door.updateMatrixWorld();
+    
+    // Gunakan collision box yang berbeda tergantung keadaan pintu
+    let localBox;
+    if (doorGroup.userData.isOpen) {
+        localBox = doorGroup.userData.openCollisionBox.clone();
+    } else {
+        localBox = doorGroup.userData.originalBox.clone();
+    }
+    
+    const worldBox = localBox.clone();
+    worldBox.applyMatrix4(door.matrixWorld);
+    doorGroup.userData.collisionBox.copy(worldBox);
+    
+    // Update collidableBoxes array
+    const index = collidableBoxes.indexOf(doorGroup.userData.collisionBox);
+    if (index === -1) {
+        collidableBoxes.push(doorGroup.userData.collisionBox);
+    }
+    
+    // Debug visualization (optional)
+    if (doorGroup.userData.debugBoxHelper) {
+        scene.remove(doorGroup.userData.debugBoxHelper);
+        const helper = new THREE.Box3Helper(doorGroup.userData.collisionBox, 0xffff00);
+        scene.add(helper);
+        doorGroup.userData.debugBoxHelper = helper;
     }
 }
 
@@ -324,18 +409,17 @@ function createImpactEffects(position, direction) {
     setTimeout(() => scene.remove(impact), 300);
 }
 
-// Event listener untuk tombol F - DIPERBAIKI
+// Event listener untuk tombol F - DENGAN RADIUS DINAMIS BERDASARKAN LEBAR PINTU
 document.addEventListener('keydown', (event) => {
     if (event.code === 'KeyF') {
         const cameraPosition = camera.position.clone();
+        let doorFound = false;
         
         // Cek interaksi dengan pintu
         scene.traverse((object) => {
             if (object.userData && typeof object.userData.isOpen === 'boolean') {
-                const doorPosition = object.position.clone();
-                const distance = cameraPosition.distanceTo(doorPosition);
-                
-                if (distance <= object.userData.interactionDistance) {
+                // Gunakan fungsi baru untuk cek jarak
+                if (isWithinDoorInteractionRange(cameraPosition, object)) {
                     // Toggle status pintu
                     object.userData.isOpen = !object.userData.isOpen;
                     object.userData.isOpening = true;
@@ -347,10 +431,55 @@ document.addEventListener('keydown', (event) => {
                         object.userData.targetRotation = object.userData.closedRotation;
                     }
                     
+                    const distance = cameraPosition.distanceTo(object.position);
                     console.log(`Door ${object.userData.isOpen ? 'opening' : 'closing'} to ${object.userData.targetRotation} radians`);
+                    console.log(`Distance: ${distance.toFixed(2)}, Max interaction distance: ${object.userData.interactionDistance.toFixed(2)}`);
+                    
+                    doorFound = true;
                 }
             }
         });
+        
+        // Debug: Jika tidak ada pintu yang ditemukan
+        if (!doorFound) {
+            console.log('No door within interaction range');
+            // Tampilkan jarak ke semua pintu untuk debug
+            scene.traverse((object) => {
+                if (object.userData && typeof object.userData.isOpen === 'boolean') {
+                    const distance = cameraPosition.distanceTo(object.position);
+                    console.log(`Door at distance: ${distance.toFixed(2)}, required: ${object.userData.interactionDistance.toFixed(2)}`);
+                }
+            });
+        }
+    }
+});
+
+// Fungsi untuk toggle debug visual radius (opsional - untuk development)
+let showDebugRadius = false;
+document.addEventListener('keydown', (event) => {
+    if (event.code === 'KeyG') { // Tekan G untuk toggle debug radius
+        showDebugRadius = !showDebugRadius;
+        
+        if (showDebugRadius) {
+            // Tampilkan radius untuk semua pintu
+            scene.traverse((object) => {
+                if (object.userData && typeof object.userData.isOpen === 'boolean') {
+                    createInteractionRadiusHelper(object);
+                }
+            });
+        } else {
+            // Hapus semua helper radius
+            const helpersToRemove = [];
+            scene.traverse((object) => {
+                if (object.userData && object.userData.isDoorHelper) {
+                    helpersToRemove.push(object);
+                }
+            });
+            
+            helpersToRemove.forEach(helper => scene.remove(helper));
+        }
+        
+        console.log(`Debug radius visibility: ${showDebugRadius ? 'ON' : 'OFF'}`);
     }
 });
 
