@@ -82,7 +82,7 @@ export function loadModels(scene, camera, onLoaded) {
                 const size = new THREE.Vector3();
                 box.getSize(size);
 
-                if (size.x < 5 && size.y > 0.5 && size.z < 5) {
+                if (size.x < 30 && size.y > 1 && size.z < 30) {
                     collidableBoxes.push(box);
                     shootableTargets.push(box);
                 }
@@ -144,7 +144,12 @@ export function loadModels(scene, camera, onLoaded) {
     loadModelWithCollision(loader, scene, "/assets/models/target/boxing_ring.glb", [1.5, 1, 1.5], [0, -1, 18]);
     loadModelWithCollision(loader, scene, "/assets/models/target/body_training.glb", [2, 1.5, 0.7], [14, -0.5, -10]);
 
-    loadModelWithCollision(loader, scene, "/assets/models/target/boxing_bag.glb", [50, 60, 50], [-15, -2, 0], 0, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-15, 3.5, 0], Math.PI/2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [15, 3.5, 0], Math.PI/2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, -20], Math.PI/2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, 15], Math.PI/2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-10, 3.5, -10], Math.PI/2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [10, 3.5, 10], Math.PI/2, true);
 
     loadModelWithCollision(loader, scene, "/assets/models/target/gym_equipment.glb", [0.5, 0.5, 0.5], [-16, -0.5, 15], Math.PI / 2, true);
 }

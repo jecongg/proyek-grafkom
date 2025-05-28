@@ -15,21 +15,21 @@ loadModels(scene, camera, () => {
     // Ruang Utama
     // Dinding belakang, dipecah untuk celah pintu
     // Bagian kiri celah
-    createWall(8, 6, 0.2, [-4, 2, -12]); // Dinding belakang segmen kiri celah (dari -8 ke 0)
+    createWall(8, 6, 0.2, [-4, 2, -14]); // Dinding belakang segmen kiri celah (dari -8 ke 0)
 
     // Bagian kanan celah
-    createWall(8, 6, 0.2, [6, 2, -12]); // Dinding belakang segmen kanan celah (dari 2 ke 10)
+    createWall(8, 6, 0.2, [6, 2, -14]); // Dinding belakang segmen kanan celah (dari 2 ke 10)
 
     // Bagian atas celah
-    createWall(2, 1, 0.2, [1, 4.5, -12]); // Dinding belakang segmen atas celah (X: 0 ke 2, Y: 4 ke 5)
+    createWall(2, 1, 0.2, [1, 4.5, -14]); // Dinding belakang segmen atas celah (X: 0 ke 2, Y: 4 ke 5)
 
     // Dinding lainnya tetap utuh
     createWall(17.8, 6, 0.2, [1, 2, 2]); // Dinding depan
-    createWall(0.2, 6, 14.2, [-8, 2, -5]); // Dinding kiri
-    createWall(0.2, 6, 14.3, [10, 2, -5]); // Dinding kanan
+    createWall(0.2, 6, 16.2, [-8, 2, -6]); // Dinding kiri
+    createWall(0.2, 6, 16.2, [10, 2, -6]); // Dinding kanan
     
-    // Pintu di dinding belakang
-    createDoor(2, 3, [1, 1, -12], Math.PI); // Pintu di dinding belakang menghadap ke dalam ruangan
+    // Pintu di dinding belakang - DIBALIK POSISINYA
+    createDoor(2, 3, [1, 1, -12], Math.PI); // Pintu di dinding belakang
 });
 
 setScene(scene);
@@ -59,54 +59,86 @@ function createWall(width, height, depth, position, rotation = 0) {
     return wall;
 }
 
-// Fungsi untuk membuat pintu
+// Fungsi untuk membuat pintu - POSISI DIBALIK
 function createDoor(width, height, position, rotation = 0) {
     const doorGroup = new THREE.Group();
     
-    // Frame pintu
+    // Posisikan engsel di sisi kanan pintu (X=2 dari celah pintu) - DIBALIK
+    // Engsel berada di X=2, Y=1, Z=-12
+    doorGroup.position.set(2, 1, -14);
+    
+    // Rotasi awal 0 (menghadap ke arah Z negatif saat tertutup) - DIBALIK
+    doorGroup.rotation.y = 0;
+    
+    // Frame pintu (posisikan relatif terhadap doorGroup)
     const frameGeometry = new THREE.BoxGeometry(width + 0.2, height + 0.2, 0.1);
     const frameMaterial = new THREE.MeshPhongMaterial({ color: 0x4a4a4a });
     const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+    // Frame di tengah celah pintu - DISESUAIKAN
+    frame.position.set(-width / 2, 0, 0);
     doorGroup.add(frame);
     
-    // Pintu
+    // Pintu (posisikan relatif terhadap doorGroup, engsel di kanan) - DIBALIK
     const doorGeometry = new THREE.BoxGeometry(width, height, 0.05);
     const doorMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x8B4513,
         shininess: 30
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.z = 0.1;
+    // Pintu berputar dari engsel kanan, jadi posisi X = -width/2 - DIBALIK
+    // Pintu di depan frame (Z positif)
+    door.position.set(-width / 2, 0, -0.05);
     doorGroup.add(door);
 
-    // Handle pintu
-    const handleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8);
+    // Sisi belakang pintu (menghadap ke ruangan lain)
+    const doorBackGeometry = new THREE.BoxGeometry(width, height, 0.05);
+    const doorBackMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x8B4513,
+        shininess: 30
+    });
+    const doorBack = new THREE.Mesh(doorBackGeometry, doorBackMaterial);
+    doorBack.position.set(-width / 2, 0, 0.05);
+    doorGroup.add(doorBack);
+
+    // Handle pintu sisi depan
+    const handleGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8);
     const handleMaterial = new THREE.MeshPhongMaterial({ 
         color: 0xC0C0C0,
         shininess: 100
     });
     const handle = new THREE.Mesh(handleGeometry, handleMaterial);
     handle.rotation.z = Math.PI / 2;
-    handle.position.set(width/2 - 0.1, 0, 0.15);
+    // Handle di sisi kiri pintu (berlawanan dari engsel) - DISESUAIKAN
+    // Posisi handle di permukaan depan pintu
+    handle.position.set(-width/3 - 0.2, 0, -0.05);
     door.add(handle);
+
+    // Handle pintu sisi belakang
+    const handleBackGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8);
+    const handleBackMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0xC0C0C0,
+        shininess: 100
+    });
+    const handleBack = new THREE.Mesh(handleBackGeometry, handleBackMaterial);
+    handleBack.rotation.z = Math.PI / 2;
+    // Handle di sisi kiri pintu belakang
+    handleBack.position.set(-width/3 - 0.2, 0, 0.05);
+    doorBack.add(handleBack);
     
-    doorGroup.position.set(...position);
-    doorGroup.rotation.y = rotation;
-    
-    // Properti pintu
+    // Properti pintu - ARAH ROTASI DIBALIK
     doorGroup.userData = {
         isOpen: false,
         isOpening: false,
-        targetRotation: 0,
-        originalRotation: rotation,
-        interactionDistance: 2, // Jarak maksimum untuk interaksi
+        targetRotation: 0, // Rotasi saat tertutup
+        openRotation: Math.PI / 2, // Rotasi saat terbuka (+90 derajat) - DIBALIK ARAH
+        closedRotation: 0, // Rotasi saat tertutup
+        interactionDistance: 2,
         door: door
     };
     
-    // Tambahkan collision box
-    const box = new THREE.Box3().setFromObject(doorGroup);
-    shootableTargets.push(box);
-    collidableBoxes.push(box);
+    // Tambahkan collision box untuk frame (bukan untuk pintu yang bergerak)
+    const frameBox = new THREE.Box3().setFromObject(frame);
+    shootableTargets.push(frameBox);
     
     scene.add(doorGroup);
     return doorGroup;
@@ -127,8 +159,8 @@ export function spawnBullet(origin, direction) {
 
     bullet.position.copy(origin);
     bullet.direction = direction.normalize();
-    bullet.speed = 20; // Tambah kecepatan
-    bullet.life = 5; // Tambah lifetime
+    bullet.speed = 20;
+    bullet.life = 5;
 
     scene.add(bullet);
     bullets.push(bullet);
@@ -143,20 +175,31 @@ function animate() {
     const delta = clock.getDelta();
     if (pistolMixer) pistolMixer.update(delta);
 
-    // Update animasi pintu
+    // Update animasi pintu - DIPERBAIKI
     scene.traverse((object) => {
         if (object.userData && object.userData.isOpening) {
-            const door = object.userData.door;
             const currentRotation = object.rotation.y;
             const targetRotation = object.userData.targetRotation;
             
-            // Animasi smooth
-            if (Math.abs(currentRotation - targetRotation) > 0.01) {
-                object.rotation.y += (targetRotation - currentRotation) * delta * 2;
+            // Animasi smooth dengan kecepatan konstan
+            const rotationSpeed = 3; // radian per detik
+            const rotationDiff = targetRotation - currentRotation;
+            
+            if (Math.abs(rotationDiff) > 0.01) {
+                const step = Math.sign(rotationDiff) * rotationSpeed * delta;
+                if (Math.abs(step) >= Math.abs(rotationDiff)) {
+                    object.rotation.y = targetRotation;
+                    object.userData.isOpening = false;
+                } else {
+                    object.rotation.y += step;
+                }
             } else {
                 object.rotation.y = targetRotation;
                 object.userData.isOpening = false;
             }
+            
+            // Update collision box untuk pintu yang bergerak
+            updateDoorCollision(object);
         }
     });
 
@@ -215,6 +258,16 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// Fungsi untuk update collision box pintu yang bergerak
+function updateDoorCollision(doorGroup) {
+    // Hapus collision box lama untuk pintu ini
+    for (let i = collidableBoxes.length - 1; i >= 0; i--) {
+        // Identifikasi collision box pintu berdasarkan posisi atau metadata
+        // Untuk sekarang, kita tidak update collision untuk pintu yang bergerak
+        // karena kompleksitas geometri yang berubah
+    }
+}
+
 function createBulletHole(position, normal) {
     const geometry = new THREE.CircleGeometry(0.05, 16);
     const material = new THREE.MeshPhongMaterial({
@@ -223,22 +276,17 @@ function createBulletHole(position, normal) {
         transparent: true,
         opacity: 0.8,
         side: THREE.DoubleSide,
-        depthWrite: false, // Hindari z-fighting
+        depthWrite: false,
     });
 
     const decal = new THREE.Mesh(geometry, material);
-
-    // Posisi sedikit offset agar tidak "z-fight" dengan permukaan
     decal.position.copy(position).add(normal.clone().multiplyScalar(-0.01));
     decal.lookAt(position.clone().add(normal));
 
     scene.add(decal);
-
-    // Simpan ke array untuk hapus nanti
     bulletHoles.push({ mesh: decal, createdAt: Date.now() });
 }
 
-// Fungsi helper untuk membuat efek impact
 function createImpactEffects(position, direction) {
     // Impact flash
     const flashGeometry = new THREE.SphereGeometry(0.2, 8, 8);
@@ -276,15 +324,14 @@ function createImpactEffects(position, direction) {
     setTimeout(() => scene.remove(impact), 300);
 }
 
-// Tambahkan event listener untuk tombol F
+// Event listener untuk tombol F - DIPERBAIKI
 document.addEventListener('keydown', (event) => {
     if (event.code === 'KeyF') {
         const cameraPosition = camera.position.clone();
-        const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
         
         // Cek interaksi dengan pintu
         scene.traverse((object) => {
-            if (object.userData && object.userData.isOpen !== undefined) {
+            if (object.userData && typeof object.userData.isOpen === 'boolean') {
                 const doorPosition = object.position.clone();
                 const distance = cameraPosition.distanceTo(doorPosition);
                 
@@ -292,9 +339,15 @@ document.addEventListener('keydown', (event) => {
                     // Toggle status pintu
                     object.userData.isOpen = !object.userData.isOpen;
                     object.userData.isOpening = true;
-                    object.userData.targetRotation = object.userData.isOpen ? 
-                        object.userData.originalRotation + Math.PI/2 : 
-                        object.userData.originalRotation;
+                    
+                    // Set target rotasi berdasarkan status
+                    if (object.userData.isOpen) {
+                        object.userData.targetRotation = object.userData.openRotation;
+                    } else {
+                        object.userData.targetRotation = object.userData.closedRotation;
+                    }
+                    
+                    console.log(`Door ${object.userData.isOpen ? 'opening' : 'closing'} to ${object.userData.targetRotation} radians`);
                 }
             }
         });
