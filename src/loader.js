@@ -8,6 +8,8 @@ export let roomBox = null;
 export const collidableBoxes = [];
 export const shootableTargets = [];
 
+export let wallMaterial = null;
+
 export let currentWeapon = null;
 export let weapons = {
     pistol: null,
@@ -78,6 +80,11 @@ export function loadModels(scene, camera, onLoaded) {
 
         model.traverse((child) => {
             if (child.isMesh) {
+                console.log(child.name);
+                if(child.name == "Object_28"){
+                    wallMaterial = child.material;
+                }
+                
                 const box = new THREE.Box3().setFromObject(child);
                 const size = new THREE.Vector3();
                 box.getSize(size);

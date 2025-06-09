@@ -1,8 +1,22 @@
 import * as THREE from "three";
 import { scene, camera, renderer } from "./sceneSetup.js";
-import { addLighting } from "./lighting.js";
+import { addLighting, createFlashlight } from "./lighting.js";
 import { setupControls, updateCameraMovement, setScene } from "./controls.js";
-import { collidableBoxes, loadModels, pistolMixer, shootableTargets } from "./loader.js";
+import { collidableBoxes, loadModels, pistolMixer, shootableTargets, wallMaterial } from "./loader.js";
+
+const textureLoader = new THREE.TextureLoader();
+
+const flashlight = createFlashlight();
+camera.add(flashlight);
+camera.add(flashlight.target);
+
+const weaponLight = new THREE.DirectionalLight(0xffffff, 1.2); // Warna putih, intensitas sedang
+
+// Posisikan cahaya ini di atas dan sedikit di depan kamera (dalam ruang lokal kamera)
+weaponLight.position.set(0.2, -0.35, -0.5); 
+
+// Tempelkan cahaya ini ke kamera
+camera.add(weaponLight);
 
 addLighting(scene);
 setupControls(camera, renderer);
@@ -40,17 +54,44 @@ const bullets = [];
 const bulletHoles = [];
 
 // Fungsi untuk membuat dinding
-function createWall(width, height, depth, position, rotation = 0) {
+function createWall(width, height, depth, position, textureRepeat = { u: 1, v: 1 }, rotation = 0) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
-    const material = new THREE.MeshPhongMaterial({
-        color: 0x808080,
-        shininess: 30
-    });
+
+    // PENTING: Kloning materialnya agar setiap dinding punya materialnya sendiri
+    // Jika tidak di-clone, semua dinding akan berbagi 1 material yang sama persis.
+    const material = wallMaterial.clone();
+
+    // Atur pengulangan tekstur pada material yang sudah di-clone
+    // Pastikan materialnya punya .map sebelum mencoba mengatur repeat
+    if (material.map && material.map.isTexture) {
+        // Tekstur di dalam material juga perlu di-clone agar setting repeat tidak mempengaruhi yg lain
+        material.map = material.map.clone(); 
+        material.map.wrapS = THREE.RepeatWrapping;
+        material.map.wrapT = THREE.RepeatWrapping;
+        material.map.repeat.set(textureRepeat.u, textureRepeat.v);
+        material.map.needsUpdate = true; // Penting setelah clone tekstur
+    }
+    
+    // Ulangi untuk peta lain jika ada (normalMap, roughnessMap, dll)
+    if (material.normalMap && material.normalMap.isTexture) {
+        material.normalMap = material.normalMap.clone();
+        material.normalMap.wrapS = THREE.RepeatWrapping;
+        material.normalMap.wrapT = THREE.RepeatWrapping;
+        material.normalMap.repeat.set(textureRepeat.u, textureRepeat.v);
+        material.normalMap.needsUpdate = true;
+    }
+
+
     const wall = new THREE.Mesh(geometry, material);
     wall.position.set(...position);
     wall.rotation.y = rotation;
     
-    // Tambahkan collision box
+    // Sekarang karena materialnya bereaksi pada cahaya,
+    // properti bayangan ini menjadi sangat penting dan akan berfungsi.
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    
+    // Sisa kode tetap sama
     const box = new THREE.Box3().setFromObject(wall);
     shootableTargets.push(box);
     collidableBoxes.push(box);
@@ -480,6 +521,11 @@ document.addEventListener('keydown', (event) => {
         }
         
         console.log(`Debug radius visibility: ${showDebugRadius ? 'ON' : 'OFF'}`);
+    }
+    if (event.code === 'KeyL') {
+        // Toggle (ubah) status visibilitas senter
+        flashlight.visible = !flashlight.visible;
+        console.log(`Senter ${flashlight.visible ? 'Dinyalakan' : 'Dimatikan'}`);
     }
 });
 
