@@ -17,6 +17,7 @@ let timeSinceLastShot = 0;
 
 let controls;
 let isSwitchingWeapon = false;
+let isKnifeAttacking = false;
 let isRunning = false;
 let headBobTimer = 0;
 let stamina = 100;
@@ -102,12 +103,15 @@ export function setupControls(camera, renderer) {
         if (e.button === 0 && controls.isLocked) {
             // Klik kiri
             const activeWeaponName = currentWeapon?.userData.weaponName;
-            if (!activeWeaponName || activeWeaponName === "knife") return;
+            if (!activeWeaponName) return;
 
             if (activeWeaponName === "pistol") {
                 fireSingleShot(activeWeaponName);
             } else if (activeWeaponName === "m4") {
                 isFiringM4 = true; // Mulai proses tembakan M4 otomatis
+            } else if (activeWeaponName === "knife") {
+                
+                attackWithKnife();
             }
         }
     });
@@ -218,6 +222,49 @@ export function setupControls(camera, renderer) {
     }, 1000);
 }
 
+// controls.js (tambahkan fungsi baru ini)
+
+// controls.js (GANTI FUNGSI LAMA DENGAN INI)
+
+function attackWithKnife() {
+    // 1. Guard Clauses: Cek kondisi sebelum melanjutkan
+    // Jangan menyerang jika sedang ganti senjata ATAU jika sudah sedang menyerang.
+    if (isSwitchingWeapon || isKnifeAttacking) {
+        return;
+    }
+
+    const weaponName = 'knife';
+    const weaponMixer = mixers[weaponName];
+    const weaponAnims = animations[weaponName];
+
+    if (!weaponMixer || !weaponAnims?.attack || !weaponAnims?.idle) {
+        console.warn("Knife attack or idle animation not found!");
+        return;
+    }
+
+    // 2. Kunci serangan
+    isKnifeAttacking = true;
+
+    // Mainkan animasi attack
+    weaponMixer.stopAllAction();
+    const attackAction = weaponMixer.clipAction(weaponAnims.attack);
+    attackAction.reset().play();
+    attackAction.setLoop(THREE.LoopOnce);
+    attackAction.clampWhenFinished = true;
+
+    // 3. Kembali ke idle dan BUKA KUNCI setelah serangan selesai
+    const onAttackFinished = (e) => {
+        if (e.action === attackAction) {
+            weaponMixer.clipAction(weaponAnims.idle).reset().play();
+            weaponMixer.removeEventListener('finished', onAttackFinished);
+            
+            // Buka kunci serangan setelah animasi selesai.
+            isKnifeAttacking = false; 
+        }
+    };
+    weaponMixer.addEventListener('finished', onAttackFinished);
+}
+
 // controls.js
 
 // Fungsi baru untuk menembak satu kali (dipakai oleh pistol)
@@ -267,8 +314,12 @@ export function updateCameraMovement(delta) {
 
     timeSinceLastShot += delta;
 
-    if (isFiringM4 && currentWeapon?.userData.weaponName === 'm4' && timeSinceLastShot >= m4FireRate) {
-        fireSingleShot('m4'); // Gunakan fungsi yang sama dengan pistol
+    if (
+        isFiringM4 &&
+        currentWeapon?.userData.weaponName === "m4" &&
+        timeSinceLastShot >= m4FireRate
+    ) {
+        fireSingleShot("m4"); // Gunakan fungsi yang sama dengan pistol
         timeSinceLastShot = 0; // Reset timer
     }
 

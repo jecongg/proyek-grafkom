@@ -84,8 +84,9 @@ function splitAnimations(mainClip, weaponName) {
         animationRanges.hide = { start: 4.44, end: 4.78 }; // Add hide animation
     } else if (weaponName === "knife") {
         // Tambahkan animasi knife jika ada
-        animationRanges.idle = { start: 26.5, end: 30.09 };
-        animationRanges.attack = { start: 30.09, end: 31.71 };
+        animationRanges.idle = { start: 27.58, end: 30.09 };
+        animationRanges.attack = { start: 31.80, end: 32.65 };
+        // animationRanges.attack = { start: 30.09, end: 31.71 };
         animationRanges.draw = { start: 26.5, end: 27.58 }; // Add draw animation
         animationRanges.hide = { start: 32.74, end: 33.48 }; // Add hide animation
     }
@@ -246,12 +247,20 @@ export function loadModels(scene, camera, onLoaded) {
     });
     loader.load("/assets/models/weapon/knife.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(1, 1, 1);
-        model.position.set(0.1, -0.1, -0.2);
+        model.scale.set(1.5, 1.5, 1.5);
+        model.position.set(0.08, -0.1, -0.2);
         weapons.knife = model;
         model.visible = false;
+
+        model.traverse((child) => {
+            if (child.isMesh) {
+                child.userData.isWeapon = true;
+            }
+        });
         model.userData.weaponName = "knife";
         camera.add(model);
+
+        setupWeaponAnimations(model, gltf.animations, "knife");
     });
 
     // Load Targets (Gunakan fungsi reusable)
