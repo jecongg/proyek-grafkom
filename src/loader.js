@@ -74,18 +74,20 @@ function splitAnimations(mainClip, weaponName) {
         animationRanges.fire = { start: 0, end: 0.37 };
         animationRanges.reload = { start: 0.39, end: 2.72 }; // Extend reload animation
         animationRanges.draw = { start: 6.28, end: 7.8 }; // Add draw animation
-        animationRanges.hide = { start: 5.85, end: 6.23 }; // Add hide animation
+        animationRanges.hide = { start: 5.85, end: 6.25 }; // Add hide animation
     } else if (weaponName === "m4") {
         // Perbaiki range untuk M4
         animationRanges.idle = { start: 5.94, end: 6.8 };
         animationRanges.fire = { start: 0, end: 0.25 }; // Slight adjustment
         animationRanges.reload = { start: 0.26, end: 2.27 }; // Extend reload animation
         animationRanges.draw = { start: 4.81, end: 5.92 }; // Add draw animation
-        animationRanges.hide = { start: 4.44, end: 4.76 }; // Add hide animation
+        animationRanges.hide = { start: 4.44, end: 4.78 }; // Add hide animation
     } else if (weaponName === "knife") {
         // Tambahkan animasi knife jika ada
-        animationRanges.idle = { start: 0, end: 0.8 };
-        animationRanges.attack = { start: 0.9, end: 1.5 };
+        animationRanges.idle = { start: 26.5, end: 30.09 };
+        animationRanges.attack = { start: 30.09, end: 31.71 };
+        animationRanges.draw = { start: 26.5, end: 27.58 }; // Add draw animation
+        animationRanges.hide = { start: 32.74, end: 33.48 }; // Add hide animation
     }
 
     // Jika tidak ada rentang yang didefinisikan, gunakan seluruh klip sebagai "idle"
@@ -244,9 +246,8 @@ export function loadModels(scene, camera, onLoaded) {
     });
     loader.load("/assets/models/weapon/knife.glb", (gltf) => {
         const model = gltf.scene;
-        model.scale.set(0.1, 0.1, 0.1);
-        model.position.set(0.5, -0.8, -1);
-        model.rotation.y = 0.8 * Math.PI;
+        model.scale.set(1, 1, 1);
+        model.position.set(0.1, -0.1, -0.2);
         weapons.knife = model;
         model.visible = false;
         model.userData.weaponName = "knife";

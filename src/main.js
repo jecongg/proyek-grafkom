@@ -19,7 +19,6 @@ weaponLight.position.set(0.2, -0.35, -0.5);
 camera.add(weaponLight);
 
 addLighting(scene);
-setupControls(camera, renderer);
 loadModels(scene, camera, () => {
     document.getElementById("loadingScreen").style.display = "none";
     document.getElementById("startOverlay").style.display = "flex";
@@ -262,15 +261,12 @@ let clock = new THREE.Clock();
 
 function animate() {
     requestAnimationFrame(animate);
-    updateCameraMovement();
-
+    
     const delta = clock.getDelta();
+    updateCameraMovement(delta);
     if (currentWeapon) {
-        // Asumsi currentWeapon adalah objek THREE.Object3D yang menyimpan referensi ke model senjata
-        // Dan model senjata memiliki userData.weaponName (misal 'pistol', 'm4')
-        // yang diatur saat memuat di loader.js
-        const weaponName = Object.keys(weapons).find(key => weapons[key] === currentWeapon);
-
+        
+        const weaponName = currentWeapon.userData.weaponName;
         if (weaponName && mixers[weaponName]) {
             mixers[weaponName].update(delta);
         }

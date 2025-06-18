@@ -1,15 +1,22 @@
-// controls.js (VERSI DIPERBAIKI)
-
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
 // Impor fungsi setCurrentWeapon yang baru
-import { roomBox, collidableBoxes, weapons, currentWeapon, setCurrentWeapon } from "./loader.js"; 
+import {
+    roomBox,
+    collidableBoxes,
+    weapons,
+    currentWeapon,
+    setCurrentWeapon,
+} from "./loader.js";
 import { scene } from "./sceneSetup.js";
 import { animations, mixers } from "./loader.js";
 import { spawnBullet } from "./main.js";
 
+const m4FireRate = 0.1; // 1 peluru setiap 0.1 detik (10 peluru/detik)
+let timeSinceLastShot = 0;
+
 let controls;
-let isSwitchingWeapon = false; 
+let isSwitchingWeapon = false;
 let isRunning = false;
 let headBobTimer = 0;
 let stamina = 100;
@@ -19,6 +26,7 @@ let walkSound;
 let m4SwitchSound;
 let pistolSwitchSound;
 let knifeSwitchSound;
+let isFiringM4 = false;
 let soundsLoaded = {
     m4: false,
     pistol: false,
@@ -91,52 +99,23 @@ export function setupControls(camera, renderer) {
     });
 
     document.addEventListener("mousedown", (e) => {
-        if (e.button === 0 && controls.isLocked) { // Klik kiri
+        if (e.button === 0 && controls.isLocked) {
+            // Klik kiri
             const activeWeaponName = currentWeapon?.userData.weaponName;
-            if (!activeWeaponName || activeWeaponName === 'knife') return;
+            if (!activeWeaponName || activeWeaponName === "knife") return;
 
-            const weaponMixer = mixers[activeWeaponName];
-            const weaponAnimations = animations[activeWeaponName];
-            if (!weaponMixer || !weaponAnimations) return;
-
-            const fireClip = weaponAnimations.fire;
-            const idleClip = weaponAnimations.idle;
-            
-            // Cek ammo
-            const weaponAmmo = ammo[activeWeaponName];
-            if (!weaponAmmo || weaponAmmo.current <= 0) {
-                // TODO: Putar suara dry fire
-                console.log(`No ammo for ${activeWeaponName}.`);
-                return;
-            }
-
-            // Kurangi ammo dan tembak
-            weaponAmmo.current--;
-            const cameraObj = controls.getObject();
-            const origin = cameraObj.position.clone();
-            const fireDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(cameraObj.quaternion);
-            spawnBullet(origin, fireDirection);
-            updateAmmoDisplay();
-
-            // Putar animasi tembak
-            if (fireClip && idleClip) {
-                weaponMixer.stopAllAction();
-                const fireAction = weaponMixer.clipAction(fireClip);
-                fireAction.reset().play();
-                fireAction.setLoop(THREE.LoopOnce);
-                fireAction.clampWhenFinished = true;
-
-                // Listener untuk kembali ke idle setelah tembak selesai
-                const onFireFinished = (event) => {
-                    if (event.action === fireAction) {
-                        const idleAction = weaponMixer.clipAction(idleClip);
-                        idleAction.reset().play();
-                        weaponMixer.removeEventListener('finished', onFireFinished);
-                    }
-                };
-                weaponMixer.addEventListener('finished', onFireFinished);
+            if (activeWeaponName === "pistol") {
+                fireSingleShot(activeWeaponName);
+            } else if (activeWeaponName === "m4") {
+                isFiringM4 = true; // Mulai proses tembakan M4 otomatis
             }
         }
+    });
+
+    document.addEventListener("mouseup", (e) => {
+        if (e.button !== 0 || !controls.isLocked) return;
+
+        isFiringM4 = false; // Hentikan tembakan M4 saat tombol mouse dilepas
     });
 
     document.addEventListener("keydown", (event) => {
@@ -187,11 +166,22 @@ export function setupControls(camera, renderer) {
 
     document.addEventListener("keydown", (event) => {
         switch (event.code) {
-            case "KeyW": moveForward = true; break;
-            case "KeyS": moveBackward = true; break;
-            case "KeyA": moveLeft = true; break;
-            case "KeyD": moveRight = true; break;
-            case "ShiftLeft": case "ShiftRight": isRunning = true; break;
+            case "KeyW":
+                moveForward = true;
+                break;
+            case "KeyS":
+                moveBackward = true;
+                break;
+            case "KeyA":
+                moveLeft = true;
+                break;
+            case "KeyD":
+                moveRight = true;
+                break;
+            case "ShiftLeft":
+            case "ShiftRight":
+                isRunning = true;
+                break;
             case "Space":
                 if (isOnGround) {
                     velocityY = jumpStrength;
@@ -203,11 +193,22 @@ export function setupControls(camera, renderer) {
 
     document.addEventListener("keyup", (event) => {
         switch (event.code) {
-            case "KeyW": moveForward = false; break;
-            case "KeyS": moveBackward = false; break;
-            case "KeyA": moveLeft = false; break;
-            case "KeyD": moveRight = false; break;
-            case "ShiftLeft": case "ShiftRight": isRunning = false; break;
+            case "KeyW":
+                moveForward = false;
+                break;
+            case "KeyS":
+                moveBackward = false;
+                break;
+            case "KeyA":
+                moveLeft = false;
+                break;
+            case "KeyD":
+                moveRight = false;
+                break;
+            case "ShiftLeft":
+            case "ShiftRight":
+                isRunning = false;
+                break;
         }
     });
 
@@ -217,8 +218,63 @@ export function setupControls(camera, renderer) {
     }, 1000);
 }
 
-export function updateCameraMovement() {
+// controls.js
+
+// Fungsi baru untuk menembak satu kali (dipakai oleh pistol)
+function fireSingleShot(weaponName) {
+    // Jangan menembak jika sedang ganti senjata atau reload
+    if (isSwitchingWeapon) return;
+
+    const weaponAmmo = ammo[weaponName];
+    if (!weaponAmmo || weaponAmmo.current <= 0) {
+        // TODO: Suara dry fire
+        return;
+    }
+
+    const weaponMixer = mixers[weaponName];
+    const weaponAnims = animations[weaponName];
+    if (!weaponMixer || !weaponAnims?.fire || !weaponAnims?.idle) return;
+
+    // 1. Kurangi ammo dan spawn peluru
+    weaponAmmo.current--;
+    const cameraObj = controls.getObject();
+    const origin = cameraObj.position.clone();
+    const fireDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(
+        cameraObj.quaternion
+    );
+    spawnBullet(origin, fireDirection);
+    updateAmmoDisplay();
+
+    // 2. Mainkan animasi tembak
+    weaponMixer.stopAllAction();
+    const fireAction = weaponMixer.clipAction(weaponAnims.fire);
+    fireAction.reset().play();
+    fireAction.setLoop(THREE.LoopOnce);
+    fireAction.clampWhenFinished = true;
+
+    // 3. Kembali ke idle setelah selesai
+    const onFireFinished = (e) => {
+        if (e.action === fireAction) {
+            weaponMixer.clipAction(weaponAnims.idle).reset().play();
+            weaponMixer.removeEventListener("finished", onFireFinished);
+        }
+    };
+    weaponMixer.addEventListener("finished", onFireFinished);
+}
+
+export function updateCameraMovement(delta) {
     if (!controls.isLocked) return;
+
+    timeSinceLastShot += delta;
+
+    if (isFiringM4 && currentWeapon?.userData.weaponName === 'm4' && timeSinceLastShot >= m4FireRate) {
+        fireSingleShot('m4'); // Gunakan fungsi yang sama dengan pistol
+        timeSinceLastShot = 0; // Reset timer
+    }
+
+    if (isFiringM4 && ammo.m4.current <= 0) {
+        isFiringM4 = false;
+    }
 
     const baseSpeed = 0.06;
     const runSpeed = 0.1;
@@ -287,7 +343,7 @@ export function updateCameraMovement() {
 
     velocityY += gravity * deltaTime;
     object.position.y += velocityY;
-    
+
     downRay.set(object.position, downDirection);
 
     const objectsToIntersect = [];
@@ -299,7 +355,9 @@ export function updateCameraMovement() {
 
     const intersects = downRay.intersectObjects(objectsToIntersect, true);
     const maxRayDistance = 2;
-    const validHits = intersects.filter((hit) => hit.distance <= maxRayDistance);
+    const validHits = intersects.filter(
+        (hit) => hit.distance <= maxRayDistance
+    );
 
     if (validHits.length > 0) {
         isOnGround = true;
@@ -323,13 +381,17 @@ function playWeaponSound(soundObject) {
 
 function reload() {
     const activeWeaponName = currentWeapon?.userData.weaponName;
-    if (!activeWeaponName || activeWeaponName === 'knife') return;
+    if (!activeWeaponName || activeWeaponName === "knife") return;
 
     const weaponAmmo = ammo[activeWeaponName];
     const weaponMixer = mixers[activeWeaponName];
     const weaponAnimations = animations[activeWeaponName];
-    
-    if (!weaponAmmo || weaponAmmo.reserve <= 0 || weaponAmmo.current === weaponAmmo.max) {
+
+    if (
+        !weaponAmmo ||
+        weaponAmmo.reserve <= 0 ||
+        weaponAmmo.current === weaponAmmo.max
+    ) {
         return; // Tidak ada ammo cadangan atau sudah penuh
     }
 
@@ -353,11 +415,11 @@ function reload() {
 
                 const idleAction = weaponMixer.clipAction(idleClip);
                 idleAction.reset().play();
-                
-                weaponMixer.removeEventListener('finished', onReloadFinished);
+
+                weaponMixer.removeEventListener("finished", onReloadFinished);
             }
         };
-        weaponMixer.addEventListener('finished', onReloadFinished);
+        weaponMixer.addEventListener("finished", onReloadFinished);
     }
 }
 
@@ -369,9 +431,9 @@ function updateAmmoDisplay() {
     }
 
     const weaponName = currentWeapon.userData.weaponName;
-    if (weaponName === 'pistol' || weaponName === 'm4') {
+    if (weaponName === "pistol" || weaponName === "m4") {
         ammoDisplay.textContent = `${ammo[weaponName].current} / ${ammo[weaponName].reserve}`;
-    } else if (weaponName === 'knife') {
+    } else if (weaponName === "knife") {
         ammoDisplay.textContent = `∞`;
     } else {
         ammoDisplay.textContent = "";
@@ -399,9 +461,12 @@ export function switchWeapon(targetWeaponName) {
         updateAmmoDisplay();
 
         // Putar suara
-        if (targetWeaponName === 'm4' && soundsLoaded.m4) playWeaponSound(m4SwitchSound);
-        if (targetWeaponName === 'pistol' && soundsLoaded.pistol) playWeaponSound(pistolSwitchSound);
-        if (targetWeaponName === 'knife' && soundsLoaded.knife) playWeaponSound(knifeSwitchSound);
+        if (targetWeaponName === "m4" && soundsLoaded.m4)
+            playWeaponSound(m4SwitchSound);
+        if (targetWeaponName === "pistol" && soundsLoaded.pistol)
+            playWeaponSound(pistolSwitchSound);
+        if (targetWeaponName === "knife" && soundsLoaded.knife)
+            playWeaponSound(knifeSwitchSound);
 
         const newMixer = mixers[targetWeaponName];
         const newAnims = animations[targetWeaponName];
@@ -423,11 +488,11 @@ export function switchWeapon(targetWeaponName) {
             const onDrawFinished = (e) => {
                 if (e.action === drawAction) {
                     newMixer.clipAction(idleClip).reset().play();
-                    newMixer.removeEventListener('finished', onDrawFinished);
+                    newMixer.removeEventListener("finished", onDrawFinished);
                     isSwitchingWeapon = false; // 3. Buka kunci SETELAH animasi selesai
                 }
             };
-            newMixer.addEventListener('finished', onDrawFinished);
+            newMixer.addEventListener("finished", onDrawFinished);
         } else if (idleClip) {
             newMixer.stopAllAction();
             newMixer.clipAction(idleClip).reset().play();
@@ -440,7 +505,9 @@ export function switchWeapon(targetWeaponName) {
     // Logika untuk menyembunyikan senjata lama
     if (previousWeapon && previousWeaponName) {
         const prevMixer = mixers[previousWeaponName];
-        const hideClip = prevMixer ? animations[previousWeaponName]?.hide : null;
+        const hideClip = prevMixer
+            ? animations[previousWeaponName]?.hide
+            : null;
 
         if (prevMixer && hideClip) {
             prevMixer.stopAllAction();
@@ -452,11 +519,11 @@ export function switchWeapon(targetWeaponName) {
             const onHideFinished = (e) => {
                 if (e.action === hideAction) {
                     previousWeapon.visible = false;
-                    prevMixer.removeEventListener('finished', onHideFinished);
+                    prevMixer.removeEventListener("finished", onHideFinished);
                     showNewWeapon(); // Panggil fungsi untuk menampilkan senjata baru
                 }
             };
-            prevMixer.addEventListener('finished', onHideFinished);
+            prevMixer.addEventListener("finished", onHideFinished);
         } else {
             if (previousWeapon) previousWeapon.visible = false;
             showNewWeapon();

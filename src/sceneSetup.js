@@ -34,8 +34,6 @@ flashlight.visible = false;
 flashlight.position.set(0,0,0);
 flashlight.target.position.set(0, 0, -1);
 flashlight.visible=true;
-// camera.add(flashlight);
-// camera.add(flashlight.target);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
