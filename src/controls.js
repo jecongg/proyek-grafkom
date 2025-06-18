@@ -115,7 +115,11 @@ export function setupControls(camera, renderer) {
                 updateAmmoDisplay();
             }
 
-            if (fire && (currentWeapon === weapons.pistol || currentWeapon === weapons.m4)) {
+            if (
+                fire &&
+                (currentWeapon === weapons.pistol ||
+                    currentWeapon === weapons.m4)
+            ) {
                 fire.reset().play();
                 fire.clampWhenFinished = true;
                 fire.setLoop(THREE.LoopOnce);
@@ -255,9 +259,6 @@ export function updateCameraMovement() {
         new THREE.Vector3(0.7, 3, 0.7)
     );
 
-    // const playerHelper = new THREE.Box3Helper(playerBox, 0x0000ff);
-    // scene.add(playerHelper);
-
     // Cek keluar ruangan
     if (!playerBox.intersectsBox(roomBox)) {
         object.position.copy(previousPosition);
@@ -266,18 +267,6 @@ export function updateCameraMovement() {
 
     const size = new THREE.Vector3();
     playerBox.getSize(size);
-
-    // console.log("📦 PlayerBox Size:", size);
-    // console.log("📍 Player Position (Center):", object.position);
-    // console.log("🟥 RoomBox min:", roomBox?.min);
-    // console.log("🟥 RoomBox max:", roomBox?.max);
-
-    // // Cek tabrakan dengan collider
-    // for (const box of collidableBoxes) {
-    //     if (playerBox.intersectsBox(box)) {
-    //         console.log("🚧 Tabrak:", box);
-    //     }
-    // }
 
     // Cek tabrakan dengan pilar
     for (const box of collidableBoxes) {
@@ -325,8 +314,17 @@ export function updateCameraMovement() {
     // Raycaster untuk cek tanah di bawah player
     downRay.set(object.position, downDirection);
 
-    // Hanya intersect dengan object yang ada di scene
-    const intersects = downRay.intersectObjects(sceneRef.children, true);
+    // Dapatkan semua objek yang akan diinterseksi Raycaster,
+    // lalu saring objek senjata sebelum melakukan interseksi.
+    const objectsToIntersect = [];
+    sceneRef.traverse((obj) => {
+        // Hanya sertakan mesh yang tidak ditandai sebagai senjata
+        if (obj.isMesh && !obj.userData.isWeapon) {
+            objectsToIntersect.push(obj);
+        }
+    });
+
+    const intersects = downRay.intersectObjects(objectsToIntersect, true);
 
     // Batas bawah maksimum (misal tinggi kaki 1.7 meter di atas permukaan)
     const maxRayDistance = 2;
@@ -381,7 +379,7 @@ function reload() {
                 ammo.pistol.current += available;
                 ammo.pistol.reserve -= available;
                 updateAmmoDisplay();
-                
+
                 const idleAnim = pistolAnimations["Armature|Idle"];
                 if (idleAnim) idleAnim.reset().play();
             };
