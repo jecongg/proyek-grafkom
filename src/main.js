@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { scene, camera, renderer } from "./sceneSetup.js";
 import { addLighting, createFlashlight } from "./lighting.js";
 import { setupControls, updateCameraMovement, setScene } from "./controls.js";
-import { collidableBoxes, loadModels, pistolMixer, shootableTargets, wallMaterial } from "./loader.js";
+import { collidableBoxes, loadModels, mixers, currentWeapon, weapons, shootableTargets, wallMaterial } from "./loader.js";
 
 const textureLoader = new THREE.TextureLoader();
 
@@ -265,7 +265,16 @@ function animate() {
     updateCameraMovement();
 
     const delta = clock.getDelta();
-    if (pistolMixer) pistolMixer.update(delta);
+    if (currentWeapon) {
+        // Asumsi currentWeapon adalah objek THREE.Object3D yang menyimpan referensi ke model senjata
+        // Dan model senjata memiliki userData.weaponName (misal 'pistol', 'm4')
+        // yang diatur saat memuat di loader.js
+        const weaponName = Object.keys(weapons).find(key => weapons[key] === currentWeapon);
+
+        if (weaponName && mixers[weaponName]) {
+            mixers[weaponName].update(delta);
+        }
+    }
 
     // Update animasi pintu - DIPERBAIKI
     scene.traverse((object) => {

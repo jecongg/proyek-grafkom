@@ -1,8 +1,8 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
 
-export const pistolAnimations = {};
-export let pistolMixer;
+export const mixers = {}; // Objek untuk menyimpan AnimationMixer setiap senjata
+export const animations = {}; // Objek untuk menyimpan klip animasi yang sudah dipisah
 
 export let roomBox = null;
 export const collidableBoxes = [];
@@ -11,6 +11,11 @@ export const shootableTargets = [];
 export let wallMaterial = null;
 
 export let currentWeapon = null;
+
+// Fungsi untuk mengubah senjata saat ini dari modul lain
+export function setCurrentWeapon(weapon) {
+    currentWeapon = weapon;
+}
 export let weapons = {
     pistol: null,
     m4: null,
@@ -57,6 +62,98 @@ function loadModelWithCollision(
             }
         });
     });
+}
+
+function splitAnimations(mainClip, weaponName) {
+    const splitClips = {};
+    const animationRanges = {};
+
+    if (weaponName === "pistol") {
+        // Perbaiki range untuk pistol
+        animationRanges.idle = { start: 7.71, end: 8.8 };
+        animationRanges.fire = { start: 0, end: 0.37 };
+        animationRanges.reload = { start: 0.39, end: 2.72 }; // Extend reload animation
+        animationRanges.draw = { start: 6.28, end: 7.8 }; // Add draw animation
+        animationRanges.hide = { start: 5.85, end: 6.23 }; // Add hide animation
+    } else if (weaponName === "m4") {
+        // Perbaiki range untuk M4
+        animationRanges.idle = { start: 5.94, end: 6.8 };
+        animationRanges.fire = { start: 0, end: 0.25 }; // Slight adjustment
+        animationRanges.reload = { start: 0.26, end: 2.27 }; // Extend reload animation
+        animationRanges.draw = { start: 4.81, end: 5.92 }; // Add draw animation
+        animationRanges.hide = { start: 4.44, end: 4.76 }; // Add hide animation
+    } else if (weaponName === "knife") {
+        // Tambahkan animasi knife jika ada
+        animationRanges.idle = { start: 0, end: 0.8 };
+        animationRanges.attack = { start: 0.9, end: 1.5 };
+    }
+
+    // Jika tidak ada rentang yang didefinisikan, gunakan seluruh klip sebagai "idle"
+    if (Object.keys(animationRanges).length === 0) {
+        console.warn(
+            `No specific animation ranges defined for ${weaponName}. Using full clip as 'idle'.`
+        );
+        splitClips.idle = mainClip;
+        return splitClips;
+    }
+
+    // Three.js AnimationUtils.subclip memerlukan frame, bukan detik.
+    // Kita perlu mengonversi detik ke frame. Asumsi FPS 30.
+    const FPS = 30; // Sesuaikan jika FPS animasi Anda berbeda
+
+    for (const animName in animationRanges) {
+        const range = animationRanges[animName];
+        const startFrame = Math.round(range.start * FPS);
+        const endFrame = Math.round(range.end * FPS);
+
+        // Pastikan frame tidak melebihi durasi klip utama
+        const totalFrames = Math.round(mainClip.duration * FPS);
+        const actualEndFrame = Math.min(endFrame, totalFrames);
+
+        const newClip = THREE.AnimationUtils.subclip(
+            mainClip,
+            animName, // Nama klip baru
+            startFrame,
+            actualEndFrame,
+            FPS // FPS yang digunakan untuk subclip
+        );
+        splitClips[animName] = newClip;
+        console.log(
+            `[${weaponName}] Created clip '${animName}' from frames ${startFrame}-${actualEndFrame} (duration: ${newClip.duration.toFixed(
+                2
+            )}s)`
+        );
+    }
+
+    return splitClips;
+}
+
+function setupWeaponAnimations(model, gltfAnimations, weaponName) {
+    if (!gltfAnimations || gltfAnimations.length === 0) {
+        console.warn(`No animations found for ${weaponName}.`);
+        return;
+    }
+
+    const mixer = new THREE.AnimationMixer(model);
+    mixers[weaponName] = mixer;
+
+    // Asumsi hanya ada satu AnimationClip besar yang berisi semua animasi
+    const mainClip = gltfAnimations[0];
+    console.log(
+        `Loaded ${weaponName} with total animation duration: ${mainClip.duration.toFixed(
+            2
+        )}s`
+    );
+
+    // Pisahkan animasi
+    animations[weaponName] = splitAnimations(mainClip, weaponName);
+
+    // Contoh: Putar animasi idle secara default
+    if (animations[weaponName].idle) {
+        const action = mixer.clipAction(animations[weaponName].idle);
+        action.loop = THREE.LoopRepeat;
+        action.play();
+    }
 }
 
 export function loadModels(scene, camera, onLoaded) {
@@ -108,38 +205,43 @@ export function loadModels(scene, camera, onLoaded) {
     });
 
     // Load Weapons
+    // loader.js
     loader.load("/assets/models/weapon/pistol.glb", (gltf) => {
         const model = gltf.scene;
         model.scale.set(1, 1, 1);
         model.position.set(0.15, -0.2, -0.3);
         weapons.pistol = model;
+        model.visible = false; // <-- TAMBAHKAN INI
         camera.add(model);
 
         model.traverse((child) => {
             if (child.isMesh) {
-                child.userData.isWeapon = true; // Tandai mesh sebagai senjata
+                child.userData.isWeapon = true;
             }
         });
+        model.userData.weaponName = "pistol";
 
-        currentWeapon = model;
+        setupWeaponAnimations(model, gltf.animations, "pistol");
     });
 
+    // loader.js
     loader.load("/assets/models/weapon/m16.glb", (gltf) => {
         const model = gltf.scene;
         model.scale.set(1, 1, 1);
         model.position.set(0.15, -0.25, -0.2);
         weapons.m4 = model;
-        model.visible = false;
+        model.visible = false; // Ini sudah benar, biarkan saja
 
         model.traverse((child) => {
             if (child.isMesh) {
-                child.userData.isWeapon = true; // Tandai mesh sebagai senjata
+                child.userData.isWeapon = true;
             }
         });
-
         camera.add(model);
-    });
+        model.userData.weaponName = "m4";
 
+        setupWeaponAnimations(model, gltf.animations, "m4");
+    });
     loader.load("/assets/models/weapon/knife.glb", (gltf) => {
         const model = gltf.scene;
         model.scale.set(0.1, 0.1, 0.1);
@@ -147,6 +249,7 @@ export function loadModels(scene, camera, onLoaded) {
         model.rotation.y = 0.8 * Math.PI;
         weapons.knife = model;
         model.visible = false;
+        model.userData.weaponName = "knife";
         camera.add(model);
     });
 
