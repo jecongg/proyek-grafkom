@@ -1,16 +1,25 @@
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import * as THREE from "three";
 // Impor fungsi setCurrentWeapon yang baru
+// import {
+//     roomBox,
+//     collidableBoxes,
+//     weapons,
+//     currentWeapon,
+//     setCurrentWeapon,
+// } from "./loader.js";
+import { scene } from "./sceneSetup.js";
 import {
     roomBox,
     collidableBoxes,
     weapons,
     currentWeapon,
     setCurrentWeapon,
+    ammoPickups,
+    mixers,
+    animations,
 } from "./loader.js";
-import { scene } from "./sceneSetup.js";
-import { animations, mixers } from "./loader.js";
-import { spawnBullet } from "./main.js";
+import { spawnBullet, activePickup } from "./main.js";
 
 const m4FireRate = 0.1; // 1 peluru setiap 0.1 detik (10 peluru/detik)
 let timeSinceLastShot = 0;
@@ -48,6 +57,7 @@ const jumpStrength = 0.1; // seberapa tinggi lompat
 let isOnGround = true; // apakah sedang di tanah
 const downRay = new THREE.Raycaster();
 const downDirection = new THREE.Vector3(0, -1, 0);
+const PICKUP_COOLDOWN = 5000; 
 
 let sceneRef = null;
 
@@ -56,11 +66,13 @@ let ammo = {
         current: 30,
         max: 30,
         reserve: 90,
+        maxReserve: 180, // BARU: Batas maksimum amunisi cadangan
     },
     pistol: {
         current: 12,
         max: 12,
         reserve: 36,
+        maxReserve: 72, // BARU: Batas maksimum amunisi cadangan
     },
 };
 
@@ -95,6 +107,23 @@ export function setupControls(camera, renderer) {
                 case "Digit3":
                     switchWeapon("knife");
                     break;
+                case "KeyE":
+                    handleInteraction();
+                    break;
+                case "KeyR":
+                    reload();
+                    break;
+                case "KeyP": // 'P' untuk Posisi
+                    const pos = camera.position;
+                    // Format output agar mudah disalin
+                    const positionString = `[${pos.x.toFixed(
+                        2
+                    )}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}]`;
+                    console.log(
+                        "Posisi Kamera (untuk disalin):",
+                        positionString
+                    );
+                    break;
             }
         }
     });
@@ -110,7 +139,6 @@ export function setupControls(camera, renderer) {
             } else if (activeWeaponName === "m4") {
                 isFiringM4 = true; // Mulai proses tembakan M4 otomatis
             } else if (activeWeaponName === "knife") {
-                
                 attackWithKnife();
             }
         }
@@ -120,12 +148,6 @@ export function setupControls(camera, renderer) {
         if (e.button !== 0 || !controls.isLocked) return;
 
         isFiringM4 = false; // Hentikan tembakan M4 saat tombol mouse dilepas
-    });
-
-    document.addEventListener("keydown", (event) => {
-        if (event.code === "KeyR" && controls.isLocked) {
-            reload();
-        }
     });
 
     // Setup Audio
@@ -222,9 +244,56 @@ export function setupControls(camera, renderer) {
     }, 1000);
 }
 
-// controls.js (tambahkan fungsi baru ini)
+function handleInteraction() {
+    // Cek apakah ada pickup yang aktif (dideteksi di main.js)
+    if (activePickup) {
+        const now = Date.now();
+        
+        // Inisialisasi properti lastPickupTime jika belum ada
+        if (!activePickup.lastPickupTime) {
+            activePickup.lastPickupTime = 0;
+        }
 
-// controls.js (GANTI FUNGSI LAMA DENGAN INI)
+        // Cek apakah cooldown sudah selesai
+        if (now - activePickup.lastPickupTime < PICKUP_COOLDOWN) {
+            console.log(`Pickup untuk ${activePickup.weaponType} sedang dalam cooldown.`);
+            // Opsional: Tampilkan pesan cooldown ke player
+            const promptElement = document.getElementById("interaction-prompt");
+            const timeLeft = Math.ceil((PICKUP_COOLDOWN - (now - activePickup.lastPickupTime)) / 1000);
+            promptElement.textContent = `Tunggu ${timeLeft} detik...`;
+            return; // Hentikan fungsi jika masih cooldown
+        }
+
+        const weaponAmmo = ammo[activePickup.weaponType];
+
+        // Cek jika amunisi cadangan sudah penuh
+        if (weaponAmmo.reserve >= weaponAmmo.maxReserve) {
+            console.log(`Amunisi cadangan untuk ${activePickup.weaponType} sudah penuh.`);
+            const promptElement = document.getElementById("interaction-prompt");
+            promptElement.textContent = `AMUNISI ${activePickup.weaponType.toUpperCase()} PENUH`;
+            // Tidak perlu setTimeout karena prompt akan diperbarui di frame berikutnya
+            return;
+        }
+
+        console.log(`Mengambil ${activePickup.ammoAmount} amunisi untuk ${activePickup.weaponType}`);
+        
+        // Tambahkan amunisi, jangan melebihi batas maksimum
+        weaponAmmo.reserve = Math.min(weaponAmmo.maxReserve, weaponAmmo.reserve + activePickup.ammoAmount);
+
+        // Perbarui waktu terakhir pickup untuk memulai cooldown
+        activePickup.lastPickupTime = now;
+
+        // Perbarui tampilan UI amunisi
+        updateAmmoDisplay();
+        
+        // Opsional: Beri feedback visual atau suara bahwa pickup berhasil
+        // Contoh: Mainkan suara pickup
+        // playPickupSound(); 
+
+        // Karena model tidak dihapus, prompt akan otomatis diperbarui
+        // di frame berikutnya oleh checkInteractions() di main.js
+    }
+}
 
 function attackWithKnife() {
     // 1. Guard Clauses: Cek kondisi sebelum melanjutkan
@@ -233,7 +302,7 @@ function attackWithKnife() {
         return;
     }
 
-    const weaponName = 'knife';
+    const weaponName = "knife";
     const weaponMixer = mixers[weaponName];
     const weaponAnims = animations[weaponName];
 
@@ -256,13 +325,13 @@ function attackWithKnife() {
     const onAttackFinished = (e) => {
         if (e.action === attackAction) {
             weaponMixer.clipAction(weaponAnims.idle).reset().play();
-            weaponMixer.removeEventListener('finished', onAttackFinished);
-            
+            weaponMixer.removeEventListener("finished", onAttackFinished);
+
             // Buka kunci serangan setelah animasi selesai.
-            isKnifeAttacking = false; 
+            isKnifeAttacking = false;
         }
     };
-    weaponMixer.addEventListener('finished', onAttackFinished);
+    weaponMixer.addEventListener("finished", onAttackFinished);
 }
 
 // controls.js
@@ -483,6 +552,8 @@ function updateAmmoDisplay() {
 
     const weaponName = currentWeapon.userData.weaponName;
     if (weaponName === "pistol" || weaponName === "m4") {
+        // BARU: Tampilkan juga max reserve untuk kejelasan
+        const maxRes = ammo[weaponName].maxReserve;
         ammoDisplay.textContent = `${ammo[weaponName].current} / ${ammo[weaponName].reserve}`;
     } else if (weaponName === "knife") {
         ammoDisplay.textContent = `∞`;

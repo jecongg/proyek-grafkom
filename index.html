@@ -115,6 +115,22 @@
                 min-width: 80px;
                 text-align: center;
             }
+
+            #interaction-prompt {
+                position: absolute;
+                bottom: 20%; /* Posisikan di atas UI ammo */
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-family: "Arial", sans-serif;
+                font-size: 16px;
+                display: none; /* Sembunyikan secara default */
+                z-index: 10;
+                border: 1px solid rgba(255, 255, 255, 0.5);
+            }
         </style>
     </head>
     <div id="loadingScreen">
@@ -158,5 +174,7 @@
 
         <!-- Tambahkan display ammo -->
         <div id="ammo-display"></div>
+
+        <div id="interaction-prompt"></div>
     </body>
 </html>

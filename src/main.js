@@ -2,21 +2,21 @@ import * as THREE from "three";
 import { scene, camera, renderer } from "./sceneSetup.js";
 import { addLighting, createFlashlight } from "./lighting.js";
 import { setupControls, updateCameraMovement, setScene } from "./controls.js";
-import { collidableBoxes, loadModels, mixers, currentWeapon, weapons, shootableTargets, wallMaterial } from "./loader.js";
+import { collidableBoxes, loadModels, mixers, currentWeapon, weapons, shootableTargets, wallMaterial, ammoPickups } from "./loader.js";
 
 const textureLoader = new THREE.TextureLoader();
+export let activePickup = null; // BARU: Variabel untuk melacak pickup yang aktif
 
 const flashlight = createFlashlight();
+// ... (sisa kode setup tidak berubah)
 camera.add(flashlight);
 camera.add(flashlight.target);
-
-const weaponLight = new THREE.DirectionalLight(0xffffff, 1.2); // Warna putih, intensitas sedang
-
-// Posisikan cahaya ini di atas dan sedikit di depan kamera (dalam ruang lokal kamera)
+const weaponLight = new THREE.DirectionalLight(0xffffff, 1.2);
 weaponLight.position.set(0.2, -0.35, -0.5); 
-
-// Tempelkan cahaya ini ke kamera
 camera.add(weaponLight);
+
+const bullets = [];
+const bulletHoles = [];
 
 addLighting(scene);
 loadModels(scene, camera, () => {
@@ -46,11 +46,6 @@ loadModels(scene, camera, () => {
 });
 
 setScene(scene);
-
-const bullets = [];
-
-// Tambahkan array untuk menyimpan bekas tembakan
-const bulletHoles = [];
 
 // Fungsi untuk membuat dinding
 function createWall(width, height, depth, position, textureRepeat = { u: 1, v: 1 }, rotation = 0) {
@@ -257,6 +252,32 @@ export function spawnBullet(origin, direction) {
     bullets.push(bullet);
 }
 
+function checkInteractions() {
+    const promptElement = document.getElementById("interaction-prompt");
+    if (!promptElement) return;
+
+    const cameraPosition = camera.position;
+    let pickupInRange = null;
+
+    // Cari pickup yang paling dekat dan dalam jangkauan
+    for (const pickup of ammoPickups) {
+        const distance = cameraPosition.distanceTo(pickup.model.position);
+        if (distance < pickup.interactionRadius) {
+            pickupInRange = pickup;
+            break; // Ambil yang pertama ditemukan
+        }
+    }
+
+    activePickup = pickupInRange; // Update variabel global
+
+    if (activePickup) {
+        promptElement.textContent = `Tekan E untuk mengambil amunisi ${activePickup.weaponType.toUpperCase()}`;
+        promptElement.style.display = 'block';
+    } else {
+        promptElement.style.display = 'none';
+    }
+}
+
 let clock = new THREE.Clock();
 
 function animate() {
@@ -264,8 +285,10 @@ function animate() {
     
     const delta = clock.getDelta();
     updateCameraMovement(delta);
-    if (currentWeapon) {
-        
+
+    checkInteractions();
+
+    if (currentWeapon) {    
         const weaponName = currentWeapon.userData.weaponName;
         if (weaponName && mixers[weaponName]) {
             mixers[weaponName].update(delta);
