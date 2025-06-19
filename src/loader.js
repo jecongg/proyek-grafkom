@@ -246,18 +246,33 @@ export function loadModels(scene, camera, onLoaded) {
 
     // Load Targets
     // ... (Kode load target tidak berubah)
-    loadModelWithCollision(loader, scene, "/assets/models/target/targets_some.glb", [0.07, 0.065, 0.09], [20, -0.4, -5]);
-    loadModelWithCollision(loader, scene, "/assets/models/target/steel_target.glb", [0.8, 0.8, 0.8], [-13, 0.08, -30], -Math.PI / 2);
-    loadModelWithCollision(loader, scene, "/assets/models/target/boxing_ring.glb", [1.5, 1, 1.5], [0, -1, 18]);
-    loadModelWithCollision(loader, scene, "/assets/models/target/body_training.glb", [2, 1.5, 0.7], [14, -0.5, -10]);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-15, 3.5, 0], Math.PI / 2, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [15, 3.5, 0], Math.PI / 2, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, -20], Math.PI / 2, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, 15], Math.PI / 2, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-10, 3.5, -10], Math.PI / 2, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [10, 3.5, 10], Math.PI / 2, true);
-    loadModelWithCollision(loader, scene, "/assets/models/target/gym_equipment.glb", [0.5, 0.5, 0.5], [-16, -0.5, 15], Math.PI / 2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [10, 3.5, 10], Math.PI / 2, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [10, 3.5, 10], Math.PI / 2, true);
 
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_bawah.glb", [1, 1, 1.5], [-10, 1 , -5], Math.PI, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_bawah.glb", [1, 1, 1.5], [-5, 1 , -45], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_bawah.glb", [1, 1, 1.5], [0, 1 , 8], Math.PI, true);  // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_bawah.glb", [1, 1, 1.5], [15, 1 , -10], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_bawah.glb", [1, 1, 1.5], [-5, 1 , -24], Math.PI, true); // X dan Z diubah
+
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_orangbawatembak.glb", [0.5, 0.5, 0.5], [-15, -0.5, -10], Math.PI, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_orangbawatembak.glb", [0.5, 0.5, 0.5], [-15, -0.5, -30], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_orangbawatembak.glb", [0.5, 0.5, 0.5], [12, -0.5, -25], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_orangbawatembak.glb", [0.5, 0.5, 0.5], [12, -0.5, 3], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_orangbawatembak.glb", [0.5, 0.5, 0.5], [-10, -0.5, -15], Math.PI, true); // X dan Z diubah
+
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [-20, -1, 10], Math.PI, true);
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [-5, -1, 15], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [4, -1, -30], Math.PI, true);  // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [8, -1, -40], Math.PI, true); // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [20, -1, -15], Math.PI, true);  // X dan Z diubah
+    loadModelWithCollision(loader, scene, "/assets/models/target/target_kotak.glb", [0.04, 0.035, 0.15], [20, -1, 20], Math.PI, true);
 
     // BARU: Load meja/kotak untuk meletakkan senjata pickup
     loadModelWithCollision(loader, scene, "/assets/models/target/wooden_crate.glb", [0.8, 0.8, 0.8], [-10, -0.5, -10], 0, false);
