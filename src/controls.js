@@ -36,6 +36,9 @@ let walkSound;
 let m4SwitchSound;
 let pistolSwitchSound;
 let knifeSwitchSound;
+let pistolShotSound;
+let m4ShotSound;
+let knifeHitSound;
 let isFiringM4 = false;
 let soundsLoaded = {
     m4: false,
@@ -190,6 +193,24 @@ export function setupControls(camera, renderer) {
         soundsLoaded.knife = true;
     });
 
+    audioLoader.load("/assets/sounds/pistol_shot.mp3", (buffer) => {
+        pistolShotSound = new THREE.Audio(listener);
+        pistolShotSound.setBuffer(buffer);
+        pistolShotSound.setVolume(0.5); // Adjust volume as needed
+    });
+
+    audioLoader.load("/assets/sounds/gun_shot.mp3", (buffer) => {
+        m4ShotSound = new THREE.Audio(listener);
+        m4ShotSound.setBuffer(buffer);
+        m4ShotSound.setVolume(0.5); // Adjust volume as needed
+    });
+
+    audioLoader.load("/assets/sounds/knife_hit.mp3", (buffer) => {
+        knifeHitSound = new THREE.Audio(listener);
+        knifeHitSound.setBuffer(buffer);
+        knifeHitSound.setVolume(0.7); // Adjust volume as needed
+    });
+
     document.addEventListener("keydown", (event) => {
         switch (event.code) {
             case "KeyW":
@@ -311,6 +332,11 @@ function attackWithKnife() {
         return;
     }
 
+    if (knifeHitSound) {
+        if (knifeHitSound.isPlaying) knifeHitSound.stop();
+        knifeHitSound.play();
+    }
+
     // 2. Kunci serangan
     isKnifeAttacking = true;
 
@@ -360,6 +386,14 @@ function fireSingleShot(weaponName) {
     );
     spawnBullet(origin, fireDirection);
     updateAmmoDisplay();
+
+    if (weaponName === "pistol" && pistolShotSound) {
+        if (pistolShotSound.isPlaying) pistolShotSound.stop();
+        pistolShotSound.play();
+    } else if (weaponName === "m4" && m4ShotSound) {
+        if (m4ShotSound.isPlaying) m4ShotSound.stop();
+        m4ShotSound.play();
+    }
 
     // 2. Mainkan animasi tembak
     weaponMixer.stopAllAction();
