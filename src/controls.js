@@ -39,6 +39,7 @@ let knifeSwitchSound;
 let pistolShotSound;
 let m4ShotSound;
 let knifeHitSound;
+let emptyGunSound;
 let isFiringM4 = false;
 let soundsLoaded = {
     m4: false,
@@ -211,6 +212,12 @@ export function setupControls(camera, renderer) {
         knifeHitSound.setVolume(0.7); // Adjust volume as needed
     });
 
+    audioLoader.load("/assets/sounds/empty_gun.mp3", (buffer) => {
+        emptyGunSound = new THREE.Audio(listener);
+        emptyGunSound.setBuffer(buffer);
+        emptyGunSound.setVolume(5.0); // Atur volume sesuai selera
+    });
+
     document.addEventListener("keydown", (event) => {
         switch (event.code) {
             case "KeyW":
@@ -369,7 +376,11 @@ function fireSingleShot(weaponName) {
 
     const weaponAmmo = ammo[weaponName];
     if (!weaponAmmo || weaponAmmo.current <= 0) {
-        // TODO: Suara dry fire
+        if (emptyGunSound) {
+            // Hentikan suara jika sudah berjalan (untuk mencegah spam) lalu mainkan lagi
+            if (emptyGunSound.isPlaying) emptyGunSound.stop();
+            emptyGunSound.play();
+        }
         return;
     }
 

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { scene, camera, renderer } from "./sceneSetup.js";
 import { addLighting, createFlashlight } from "./lighting.js";
 import { setupControls, updateCameraMovement, setScene } from "./controls.js";
-import { collidableBoxes, loadModels, mixers, currentWeapon, weapons, shootableTargets, wallMaterial, ammoPickups } from "./loader.js";
+import { collidableBoxes, loadModels, mixers, currentWeapon, weapons, shootableTargets, wallMaterial, ammoPickups, gameTargets } from "./loader.js";
 
 const textureLoader = new THREE.TextureLoader();
 export let activePickup = null; // BARU: Variabel untuk melacak pickup yang aktif
@@ -18,6 +18,47 @@ camera.add(weaponLight);
 const bullets = [];
 const bulletHoles = [];
 
+// --- Timer Variables and Functions ---
+let timerInterval;
+let seconds = 0;
+let minutes = 0;
+const gameTimerDisplay = document.getElementById('game-timer');  // Get the timer display element
+
+function updateTimerDisplay() {
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+    if (gameTimerDisplay) { // Check if the element exists
+        gameTimerDisplay.textContent = `${formattedMinutes}:${formattedSeconds}`;
+    }
+}
+
+function startTimer() {
+    seconds = 0;
+    minutes = 0;
+    updateTimerDisplay(); // Set display to 00:00 immediately
+    if (gameTimerDisplay) { // Check if the element exists
+        gameTimerDisplay.style.display = 'block'; // Show the timer
+    }
+
+    timerInterval = setInterval(() => {
+        seconds++;
+        if (seconds === 60) {
+            seconds = 0;
+            minutes++;
+        }
+        updateTimerDisplay();
+    }, 1000); // Update every 1 second
+}
+
+// Optional: Function to stop the timer (e.g., when the game ends)
+function stopTimer() {
+    clearInterval(timerInterval);
+    if (gameTimerDisplay) {
+        gameTimerDisplay.style.display = 'none'; // Hide the timer when stopped
+    }
+}
+// --- End Timer Variables and Functions ---
+
 addLighting(scene);
 loadModels(scene, camera, () => {
     document.getElementById("loadingScreen").style.display = "none";
@@ -25,7 +66,7 @@ loadModels(scene, camera, () => {
 
     setupControls(camera, renderer); // aktifkan kontrol hanya setelah siap
     
-    // Ruang Utama
+    // Ruang Utama  
     // Dinding belakang, dipecah untuk celah pintu
     // Bagian kiri celah
     createWall(8, 6, 0.2, [-4, 2, -14]); // Dinding belakang segmen kiri celah (dari -8 ke 0)
@@ -43,6 +84,7 @@ loadModels(scene, camera, () => {
     
     // Pintu di dinding belakang - DIBALIK POSISINYA
     createDoor(2, 3, [1, 1, -12], Math.PI); // Pintu di dinding belakang
+    
 });
 
 setScene(scene);
@@ -345,29 +387,41 @@ function animate() {
         let hitSomething = false;
 
         // Cek tabrakan dengan objek yang bisa ditembak
-        for (const targetBox of shootableTargets) {
+        for (const target of shootableTargets) {
+            // Lewati target yang sudah hancur/tidak terlihat
+            if (!target.visible) {
+                continue;
+            }
+
+            // Buat Bounding Box dari target mesh di setiap frame
+            const targetBox = new THREE.Box3().setFromObject(target);
+
             if (bulletBox.intersectsBox(targetBox)) {
-                // Efek visual tembakan
-                createImpactEffects(
-                    bullet.position.clone(),
-                    bullet.direction.clone()
-                );
 
-                // Bekas peluru
-                createBulletHole(
-                    bullet.position.clone(),
-                    bullet.direction.clone()
-                );
+                // Efek visual tetap sama
+                createImpactEffects(bullet.position.clone(), bullet.direction.clone());
+                createBulletHole(bullet.position.clone(), bullet.direction.clone());
 
-                // Hapus peluru
+                // Cek apakah ini target yang dihitung untuk kemenangan
+                if (target.userData.isWinnableTarget && !target.userData.isShot) {
+                    target.userData.isShot = true; // Tandai sebagai sudah tertembak
+                    target.visible = false;       // Sembunyikan target
+
+                    console.log("Winnable Target Hit!");
+                    updateTargetsDisplay(); // <-- TAMBAHKAN INI UNTUK UPDATE HITUNGAN
+                    checkWinCondition();
+                    checkWinCondition(); // Periksa apakah game sudah selesai
+                }
+
+                // Hapus peluru setelah mengenai sesuatu
                 scene.remove(bullet);
                 bullets.splice(i, 1);
                 hitSomething = true;
-                break;
+                break; // Keluar dari loop target, lanjut ke peluru berikutnya
             }
         }
 
-        // Jika tidak terkena apa-apa dan habis waktu
+        // Jika peluru tidak kena apa-apa dan umurnya habis
         if (!hitSomething && bullet.life <= 0) {
             scene.remove(bullet);
             bullets.splice(i, 1);
@@ -556,5 +610,50 @@ document.addEventListener('keydown', (event) => {
         console.log(`Senter ${flashlight.visible ? 'Dinyalakan' : 'Dimatikan'}`);
     }
 });
+
+document.getElementById('startMessage').addEventListener('click', () => {
+    startTimer();
+    updateTargetsDisplay(); // <-- TAMBAHKAN INI UNTUK INISIALISASI
+});
+
+function checkWinCondition() {
+    // Cek apakah semua target di array gameTargets sudah tertembak
+    const allTargetsShot = gameTargets.every(target => target.userData.isShot === true);
+
+    if (allTargetsShot) {
+        endGame();
+    }
+}
+
+function endGame() {
+    console.log("Game Over - You Win!");
+    stopTimer(); // Hentikan timer
+
+    // Tampilkan layar kemenangan
+    const winScreen = document.getElementById('winScreen');
+    const finalTimeDisplay = document.getElementById('finalTime');
+    const timerDisplay = document.getElementById('game-timer');
+
+    finalTimeDisplay.textContent = timerDisplay.textContent; // Salin waktu terakhir
+    winScreen.style.display = 'flex'; // Tampilkan layar
+
+    // Mengunci pointer agar bisa interaksi dengan menu (jika pakai PointerLockControls)
+    document.exitPointerLock();
+}
+
+function updateTargetsDisplay() {
+    // Dapatkan elemen display dari HTML
+    const displayElement = document.getElementById('targets-display');
+    if (!displayElement) return; // Keluar jika elemen tidak ditemukan
+
+    // Hitung total target dari array gameTargets
+    const totalTargets = gameTargets.length;
+
+    // Hitung berapa banyak target yang sudah ditembak (userData.isShot === true)
+    const shotTargets = gameTargets.filter(target => target.userData.isShot).length;
+
+    // Tampilkan di UI
+    displayElement.textContent = `Targets: ${shotTargets}/${totalTargets}`;
+}
 
 animate();

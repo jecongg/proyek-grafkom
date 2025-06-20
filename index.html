@@ -1,180 +1,246 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>ARMY TRAINING GROUND</title>
-        <style>
-            body {
-                margin: 0;
-                overflow: hidden;
-            }
-            #loadingScreen {
-                position: fixed;
-                inset: 0;
-                background: black;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-                z-index: 2000;
-                font-family: sans-serif;
-            }
+  <head>
+    <meta charset="UTF-8" />
+    <title>TRAINING GROUND</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      #loadingScreen {
+        position: fixed;
+        inset: 0;
+        background: black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        z-index: 2000;
+        font-family: sans-serif;
+      }
 
-            #loadingContainer {
-                width: 60%;
-                max-width: 500px;
-                text-align: center;
-            }
+      #loadingContainer {
+        width: 60%;
+        max-width: 500px;
+        text-align: center;
+      }
 
-            #loadingBar {
-                width: 100%;
-                height: 20px;
-                background: #333;
-                border-radius: 10px;
-                overflow: hidden;
-                margin-bottom: 10px;
-            }
+      #loadingBar {
+        width: 100%;
+        height: 20px;
+        background: #333;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
 
-            #loadingFill {
-                height: 100%;
-                width: 0%;
-                background: linear-gradient(90deg, #0f0, #0ff);
-                transition: width 0.2s ease;
-            }
+      #loadingFill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #0f0, #0ff);
+        transition: width 0.2s ease;
+      }
 
-            #loadingText {
-                color: white;
-                font-size: 1rem;
-            }
+      #loadingText {
+        color: white;
+        font-size: 1rem;
+      }
 
-            #startOverlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.75);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-                font-family: sans-serif;
-            }
+      #startOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column; /* Added to stack title and button vertically */
+        z-index: 1000;
+        font-family: sans-serif;
+      }
 
-            #startMessage {
-                color: white;
-                font-size: 2rem;
-                padding: 1rem 2rem;
-                background: #222;
-                border: 2px solid white;
-                border-radius: 10px;
-                cursor: pointer;
-                transition: transform 0.2s ease;
-            }
+      #gameTitle {
+        /* New style for the game title */
+        color: white;
+        font-size: 3.5rem; /* Increased font size for prominence */
+        margin-bottom: 20px; /* Space between title and button */
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.7); /* Subtle glow effect */
+      }
 
-            #startMessage:hover {
-                transform: scale(1.05);
-            }
+      #startMessage {
+        color: white;
+        font-size: 2rem;
+        padding: 1rem 2rem;
+        background: #222;
+        border: 2px solid white;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
 
-            /* Tambahkan style untuk crosshair */
-            #crosshair {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 999;
-                pointer-events: none; /* Agar tidak menghalangi klik */
-            }
+      #startMessage:hover {
+        transform: scale(1.05);
+      }
 
-            #crosshair-outer {
-                width: 20px;
-                height: 20px;
-                border: 2px solid rgba(255, 255, 255, 0.8);
-                border-radius: 50%;
-            }
+      /* Style untuk crosshair */
+      #crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 999;
+        pointer-events: none; /* Agar tidak menghalangi klik */
+      }
 
-            #crosshair-inner {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 4px;
-                height: 4px;
-                background-color: rgba(255, 255, 255, 0.8);
-                border-radius: 50%;
-                transform: translate(-50%, -50%);
-            }
+      #crosshair-outer {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+      }
 
-            #ammo-display {
-                position: fixed;
-                bottom: 30px;
-                right: 30px;
-                color: white;
-                font-family: monospace;
-                font-size: 24px;
-                background: rgba(0, 0, 0, 0.5);
-                padding: 10px 20px;
-                border-radius: 5px;
-                z-index: 1000;
-                min-width: 80px;
-                text-align: center;
-            }
+      #crosshair-inner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 4px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+      }
 
-            #interaction-prompt {
-                position: absolute;
-                bottom: 20%; /* Posisikan di atas UI ammo */
-                left: 50%;
-                transform: translateX(-50%);
-                background-color: rgba(0, 0, 0, 0.7);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 5px;
-                font-family: "Arial", sans-serif;
-                font-size: 16px;
-                display: none; /* Sembunyikan secara default */
-                z-index: 10;
-                border: 1px solid rgba(255, 255, 255, 0.5);
-            }
-        </style>
-    </head>
+      #ammo-display {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        color: white;
+        font-family: monospace;
+        font-size: 24px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        min-width: 80px;
+        text-align: center;
+      }
+
+      #interaction-prompt {
+        position: absolute;
+        bottom: 20%; /* Posisikan di atas UI ammo */
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-family: "Arial", sans-serif;
+        font-size: 16px;
+        display: none; /* Sembunyikan secara default */
+        z-index: 10;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+
+      /* Style untuk timer */
+      #game-timer {
+        position: fixed;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-family: monospace;
+        font-size: 36px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        display: none; /* Sembunyikan secara default */
+      }
+    </style>
+  </head>
+  <body>
     <div id="loadingScreen">
-        <div id="loadingContainer">
-            <div id="loadingBar">
-                <div id="loadingFill"></div>
-            </div>
-            <div id="loadingText">Loading... 0%</div>
+      <div id="loadingContainer">
+        <div id="loadingBar">
+          <div id="loadingFill"></div>
         </div>
+        <div id="loadingText">Loading... 0%</div>
+      </div>
     </div>
 
     <div id="startOverlay" style="display: none">
-        <div id="startMessage">Click to Play</div>
+      <h1 id="gameTitle">Shooting Training Ground</h1>
+      <div id="startMessage">Play</div>
     </div>
-    <body>
-        <script type="module" src="/src/main.js"></script>
 
-        <div
-            id="stamina-bar"
-            style="
-                position: absolute;
-                bottom: 30px;
-                left: 30px;
-                width: 200px;
-                height: 10px;
-                background: gray;
-            "
-        >
-            <div
-                id="stamina-fill"
-                style="height: 100%; background: limegreen; width: 100%"
-            ></div>
-        </div>
+    <script type="module" src="/src/main.js"></script>
 
-        <!-- Tambahkan crosshair sebelum closing body tag -->
-        <div id="crosshair">
-            <div id="crosshair-outer">
-                <div id="crosshair-inner"></div>
-            </div>
-        </div>
+    <div
+      id="stamina-bar"
+      style="
+        position: absolute;
+        bottom: 30px;
+        left: 30px;
+        width: 200px;
+        height: 10px;
+        background: gray;
+      "
+    >
+      <div
+        id="stamina-fill"
+        style="height: 100%; background: limegreen; width: 100%"
+      ></div>
+    </div>
 
-        <!-- Tambahkan display ammo -->
-        <div id="ammo-display"></div>
+    <div id="crosshair">
+      <div id="crosshair-outer">
+        <div id="crosshair-inner"></div>
+      </div>
+    </div>
 
-        <div id="interaction-prompt"></div>
-    </body>
+    <div id="ammo-display"></div>
+
+    <div id="interaction-prompt"></div>
+
+    <div id="game-timer">00:00</div>
+
+    <div id="winScreen" style="
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: none; /* Sembunyikan secara default */
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        z-index: 3000;
+        font-family: sans-serif;
+        color: white;
+        text-align: center;
+    ">
+        <h1 style="
+            font-size: 4rem;
+            color: #00ff00;
+            text-shadow: 0 0 15px #00ff00;
+        ">
+            TRAINING COMPLETE!
+        </h1>
+        <p style="font-size: 1.5rem;">Your final time:</p>
+        <p id="finalTime" style="font-size: 2.5rem; font-family: monospace;"></p>
+    </div>
+
+     <div id="targets-display" style="
+        position: fixed;
+        top: 30px;
+        left: 30px;
+        color: white;
+        font-family: monospace;
+        font-size: 24px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+    ">
+        Targets: 0/0
+    </div>
+  </body>
 </html>
