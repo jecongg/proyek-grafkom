@@ -40,6 +40,8 @@ let pistolShotSound;
 let m4ShotSound;
 let knifeHitSound;
 let emptyGunSound;
+let gunReloadSound;     
+let pistolReloadSound;
 let isFiringM4 = false;
 let soundsLoaded = {
     m4: false,
@@ -216,6 +218,18 @@ export function setupControls(camera, renderer) {
         emptyGunSound = new THREE.Audio(listener);
         emptyGunSound.setBuffer(buffer);
         emptyGunSound.setVolume(5.0); // Atur volume sesuai selera
+    });
+
+    audioLoader.load("/assets/sounds/gun_reload.mp3", (buffer) => {
+        gunReloadSound = new THREE.Audio(listener);
+        gunReloadSound.setBuffer(buffer);
+        gunReloadSound.setVolume(1.0); // Atur volume
+    });
+
+    audioLoader.load("/assets/sounds/pistol_reload.mp3", (buffer) => {
+        pistolReloadSound = new THREE.Audio(listener);
+        pistolReloadSound.setBuffer(buffer);
+        pistolReloadSound.setVolume(2.0); // Atur volume
     });
 
     document.addEventListener("keydown", (event) => {
@@ -558,6 +572,12 @@ function reload() {
         weaponAmmo.current === weaponAmmo.max
     ) {
         return; // Tidak ada ammo cadangan atau sudah penuh
+    }
+
+    if (activeWeaponName === "m4") {
+        playWeaponSound(gunReloadSound);
+    } else if (activeWeaponName === "pistol") {
+        playWeaponSound(pistolReloadSound);
     }
 
     const reloadClip = weaponAnimations.reload;
