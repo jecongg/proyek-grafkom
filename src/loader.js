@@ -26,6 +26,8 @@ export let weapons = {
     knife: null,
 };
 
+let x = 0;
+
 // Fungsi reusable untuk memuat model dengan collision box
 function loadModelWithCollision(
     loader,
@@ -230,6 +232,8 @@ export function loadModels(scene, camera, onLoaded) {
         });
     });
 
+
+
     // Load Weapons (yang dipegang player)
     // ... (Kode load pistol, m4, knife yang dipegang player tidak berubah)
     loader.load("/assets/models/weapon/pistol.glb", (gltf) => {
@@ -266,9 +270,34 @@ export function loadModels(scene, camera, onLoaded) {
         setupWeaponAnimations(model, gltf.animations, "knife");
     });
 
+
+
+    loader.load("/assets/models/target/target_atas.glb", (gltf) => {
+        // ... (Kode load room tidak berubah)
+        const model = gltf.scene;
+        model.scale.set(1.5, 1.5, 1.5);
+        model.position.set(0, 3.5, 0);
+        model.rotation.y = Math.PI / 2; // Rotasi 90 derajat
+        scene.add(model);
+
+        roomBox = new THREE.Box3().setFromObject(model);
+        roomBox.expandByScalar(-0.9);
+
+        function interval(){
+            setInterval(() => {
+            console.log("Moving target...");
+            model.position.x = x+=0.1;
+            if (x > 5) x = -5; // Reset posisi setelah mencapai batas
+        }, interval = 100);
+        }
+        
+        interval();
+        
+    });
+
     // Load Targets
     // ... (Kode load target tidak berubah)
-    loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-15, 3.5, 0], Math.PI / 2, true, true);
+    // loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [-15, 3.5, 0], Math.PI / 2, true, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [15, 3.5, 0], Math.PI / 2, true, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, -20], Math.PI / 2, true, true);
     loadModelWithCollision(loader, scene, "/assets/models/target/target_atas.glb", [1.5, 1.5, 1.5], [0, 3.5, 15], Math.PI / 2, true, true);
